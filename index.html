@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交通安排 — 智能派車</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Noto Sans TC',sans-serif;font-size:13px;color:#1a1a1a;background:#f0f0f0}
+.page{display:none;position:absolute;inset:0;flex-direction:column;overflow:hidden}
+.page.active{display:flex}
+.teal-bar{background:#007B6E;color:#fff;padding:0 14px;height:44px;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;flex-shrink:0;z-index:10}
+.teal-bar select{font-size:11px;padding:3px 6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:6px}
+.icon-btn{background:none;border:none;color:#fff;cursor:pointer;font-size:18px;line-height:1;padding:2px 4px}
+
+/* PAGE 0 */
+.toolbar{background:#f4f4f4;padding:7px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #ddd;flex-shrink:0;flex-wrap:wrap}
+.filter-row{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+select.std{font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333}
+.btn-smart{background:none;border:1.5px solid #dc2626;color:#dc2626;padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+.btn-smart:hover{background:#dc2626;color:#fff}
+.list-col-hdr{display:flex;align-items:center;padding:5px 14px;font-size:11px;color:#888;background:#fafafa;border-bottom:1px solid #eee;flex-shrink:0}
+.transport-list{flex:1;overflow-y:auto}
+.section-bar{background:#9e9e9e;color:#fff;padding:5px 14px;font-size:12px;font-weight:600}
+.trip-hdr{background:#f5f5f5;padding:8px 14px;font-size:12px;color:#444;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+.case-row{display:flex;align-items:center;padding:9px 14px;border-bottom:1px solid #f0f0f0;gap:8px;font-size:13px}
+.case-row:hover{background:#fafafa}
+.fab-btn{position:absolute;bottom:16px;right:16px;width:44px;height:44px;border-radius:50%;background:#007B6E;border:none;color:#fff;font-size:26px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center}
+
+/* PAGE 1 */
+.smart-body{flex:1;display:flex;min-height:0}
+.sidebar{width:270px;min-width:270px;border-right:1px solid #ddd;display:flex;flex-direction:column;background:#fff;overflow:hidden;flex-shrink:0}
+.sidebar-top{padding:8px 10px;border-bottom:1px solid #ddd;display:flex;gap:6px;align-items:center}
+.sidebar-top select{font-size:12px;padding:5px 7px;border-radius:6px;border:1px solid #ccc;background:#fff}
+.btn-change-log{background:none;border:1.5px solid #dc2626;color:#dc2626;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.btn-change-log:hover{background:#dc2626;color:#fff}
+.car-tabs{padding:8px 10px;display:flex;gap:5px;flex-wrap:wrap;border-bottom:1px solid #ddd}
+.ctab-wrap{position:relative}
+.ctab{font-size:11px;padding:4px 10px;border-radius:10px;cursor:pointer;font-weight:500;border:1px solid transparent;white-space:nowrap;display:inline-block}
+.ctab-tooltip{display:none;position:absolute;top:calc(100% + 6px);left:0;background:#1a1a1a;color:#fff;font-size:11px;border-radius:6px;padding:7px 10px;white-space:nowrap;z-index:200;line-height:1.7;box-shadow:0 3px 10px rgba(0,0,0,.25);pointer-events:none}
+.ctab-tooltip::before{content:'';position:absolute;top:-5px;left:14px;border:5px solid transparent;border-bottom-color:#1a1a1a;border-top:none}
+.ctab-wrap:hover .ctab-tooltip{display:block}
+.car-list{flex:1;overflow-y:auto;padding:4px 0}
+.trip-header{padding:5px 10px;font-size:11px;font-weight:500;color:#fff;display:flex;align-items:center;gap:4px}
+.case-item{padding:6px 10px 6px 8px;display:flex;align-items:center;gap:5px;cursor:grab;border-bottom:1px solid #f0f0f0;user-select:none;transition:background .1s}
+.case-item:hover{background:#f9f9f9}
+.case-item.dragging{opacity:.35}
+.case-item.drag-over-above{border-top:2.5px solid #007B6E}
+.case-item.drag-over-below{border-bottom:2.5px solid #007B6E}
+.num-badge{width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;color:#fff}
+.chip-wc{font-size:10px;background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:6px}
+.map-wrap{flex:1;position:relative;min-width:0}
+#map{position:absolute;inset:0}
+
+/* conflict panel */
+.conflict-panel{border-top:1px solid #ddd;background:#fff;flex-shrink:0;max-height:240px;overflow-y:auto}
+.conflict-hdr{padding:8px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;background:#fef2f2;border-bottom:1px solid #fca5a5;position:sticky;top:0;z-index:2}
+.conflict-badge{background:#dc2626;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:8px}
+.conflict-inner{padding:10px 14px;display:flex;flex-direction:column;gap:10px}
+.uchip{font-size:11px;padding:3px 9px;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;cursor:pointer}
+.uchip.wc{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.overload-row{display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 8px;border-radius:6px;background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+
+.bottom-bar{background:#fff;border-top:1px solid #ddd;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.btn-import{background:#007B6E;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer}
+.btn-import:disabled{background:#9ca3af;cursor:not-allowed}
+.btn-sec{background:#fff;color:#333;border:1px solid #ccc;padding:8px 14px;border-radius:6px;font-size:13px;cursor:pointer}
+.btn-auto{font-size:11px;padding:5px 12px;border-radius:6px;background:#007B6E;color:#fff;border:none;cursor:pointer;font-weight:500}
+.btn-auto:disabled{background:#9ca3af;cursor:not-allowed}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:12px;width:440px;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;overflow:hidden;border:1px solid #ddd}
+.modal-overlay.show .modal{transform:scale(1)}
+.mhead{background:#f8f8f8;padding:18px 20px 16px;display:flex;gap:14px;border-bottom:1px solid #e8e8e8;align-items:flex-start}
+.micon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px}
+.micon.ok{background:#e0f7f4}
+.micon.warn{background:#fef2f2}
+.mchecklist{margin:14px 20px;padding:12px 14px;background:#f5f5f5;border-radius:8px;border:1px solid #e8e8e8;display:flex;flex-direction:column;gap:8px}
+.mcheck{display:flex;align-items:center;gap:10px;font-size:13px;color:#222}
+.mwarn{margin:0 20px 14px;padding:10px 13px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#78350f;line-height:1.6}
+.mwarn-red{margin:0 20px 14px;padding:10px 13px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.6}
+.mfoot{background:#f8f8f8;padding:14px 20px;border-top:1px solid #e8e8e8;display:flex;gap:8px;justify-content:flex-end}
+.mbtn-cancel{background:#fff;color:#555;border:1px solid #ccc;padding:9px 20px;border-radius:6px;font-size:13px;cursor:pointer}
+.mbtn-confirm{background:#007B6E;color:#fff;border:none;padding:9px 26px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.mbtn-confirm:hover{background:#005f56}
+.mbtn-confirm-warn{background:#dc2626;color:#fff;border:none;padding:9px 26px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.mbtn-confirm-warn:hover{background:#b91c1c}
+
+/* change log modal */
+.changelog-modal{background:#fff;border-radius:12px;width:480px;max-height:560px;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;overflow:hidden;border:1px solid #ddd;display:flex;flex-direction:column}
+.modal-overlay.show .changelog-modal{transform:scale(1)}
+.cl-body{flex:1;overflow-y:auto;padding:0 0 8px}
+.cl-section{padding:8px 16px 4px;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:.5px}
+.cl-row{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid #f5f5f5;font-size:12px}
+.cl-row:last-child{border-bottom:none}
+.cl-tag{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.cl-tag.moved{background:#dbeafe;color:#1e40af}
+.cl-tag.unassigned{background:#fef2f2;color:#dc2626}
+.cl-tag.new{background:#e0f7f4;color:#065f46}
+.cl-arrow{color:#9ca3af;font-size:12px;flex-shrink:0}
+
+/* PAGE 2 */
+.result-body{flex:1;display:flex;flex-direction:column;min-height:0;background:#f5f5f5}
+.sum-strip{background:#fff;padding:10px 14px;border-bottom:1px solid #ddd;display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.sum-box{display:flex;flex-direction:column;align-items:center;border-radius:8px;padding:7px 16px;border:1px solid}
+.res-tabs{background:#fff;border-bottom:1px solid #ddd;display:flex;flex-shrink:0}
+.rtab{flex:1;text-align:center;padding:11px;font-size:13px;color:#666;cursor:pointer;border-bottom:2px solid transparent;font-weight:500}
+.rtab.active{color:#007B6E;border-bottom-color:#007B6E;font-weight:600}
+.tab-pane{display:none;flex:1;overflow-y:auto}
+.tab-pane.active{display:block}
+.car-blk-hdr{padding:8px 12px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;color:#fff;margin:12px 14px 0;display:flex;align-items:center;gap:6px}
+.car-blk-body{background:#fff;border:1px solid #ddd;border-top:none;border-radius:0 0 8px 8px;margin:0 14px 10px;overflow:hidden}
+.trip-blk-hdr{padding:7px 12px;background:#f0fdf4;border-bottom:1px solid #e8e8e8;font-size:12px;font-weight:600;color:#065f46}
+.t-row{display:flex;align-items:center;padding:7px 12px;border-bottom:1px solid #f5f5f5;font-size:12px;gap:8px}
+.t-row:last-child{border-bottom:none}
+.sdot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.rec-bar{background:#fff;padding:8px 14px;border-bottom:1px solid #ddd;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.rec-stats{font-size:11px;color:#444;display:flex;gap:10px;margin:8px 14px 4px;padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #d1fae5;flex-wrap:wrap}
+.rec-sec{background:#374151;color:#fff;padding:5px 14px;font-size:11px;font-weight:600}
+.rec-trip-hdr{padding:6px 14px;background:#f5f5f5;border-bottom:1px solid #eee;font-size:11px;font-weight:600;color:#555;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rec-row{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid #f5f5f5;gap:6px;font-size:12px}
+.act-btns{display:flex;gap:3px;margin-left:auto}
+.abtn{font-size:10px;padding:3px 7px;border-radius:5px;border:1px solid #ccc;background:#fff;cursor:pointer;color:#333;white-space:nowrap}
+.abtn:hover{background:#f5f5f5}
+.abtn.g{background:#007B6E;color:#fff;border-color:#007B6E}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:10000;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.leaflet-popup-content-wrapper{border-radius:10px!important;border:1px solid #ccc;box-shadow:0 2px 10px rgba(0,0,0,.12)!important;padding:0!important}
+.leaflet-popup-content{margin:0!important;padding:0!important}
+.leaflet-popup-tip-container{display:none}
+.tt-box{padding:10px 13px;min-width:190px;max-width:230px;font-size:12px;background:#fff}
+.tt-name{font-size:14px;font-weight:700;margin-bottom:6px;color:#111}
+.tt-div{height:1px;background:#eee;margin:6px 0}
+.tt-row{display:flex;gap:6px;color:#555;font-size:11px;line-height:1.5;margin-bottom:4px}
+.tt-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
+.tt-badge{font-size:10px;padding:2px 7px;border-radius:8px}
+</style>
+</head>
+<body>
+
+<!-- PAGE 0: 交通安排 -->
+<div id="page-transport" class="page active">
+  <div class="teal-bar">
+    <span>交通安排</span>
+    <div style="flex:1"></div>
+    <button class="icon-btn">⚙</button>
+    <button class="icon-btn">ℹ</button>
+    <button class="icon-btn">🖨</button>
+  </div>
+  <div class="toolbar">
+    <input placeholder="搜尋" style="padding:5px 10px;border:1px solid #ccc;border-radius:6px;font-size:12px;width:110px">
+    <div class="filter-row">
+      <select class="std"><option>服務中</option><option>停止服務</option></select>
+      <select class="std"><option>全部方向</option><option>來程</option><option>回程</option></select>
+      <select class="std"><option>全部安排</option><option>已排班</option><option>未排班</option></select>
+      <select class="std"><option>全車輛/路線</option><option>甲車</option><option>乙車</option><option>丙車</option></select>
+    </div>
+    <button class="btn-smart" onclick="goSmart()">智能派車</button>
+  </div>
+  <div class="list-col-hdr">
+    <span style="width:55px">預計</span><span style="width:130px">姓名</span><span style="width:75px">頻率</span>
+    <span style="flex:1">地址</span><span style="width:65px;text-align:right">乘車時長</span>
+    <span style="width:75px;text-align:right">輔具</span><span style="width:50px;text-align:right">備註</span>
+  </div>
+  <div class="transport-list">
+    <div class="section-bar">來程</div>
+    <div class="trip-hdr"><span>呂eva 0626 - 第1趟 07:30 預計發車</span></div>
+    <div class="case-row"><span style="width:55px;color:#555">08:50</span><span style="width:130px;font-weight:500">[1]-1 王美華</span><span style="width:75px;color:#666">一到五</span><span style="flex:1;color:#555;font-size:12px">6F., No. 213, Sec. 3, Beixin Rd.</span><span style="width:65px;text-align:right">2</span><span style="width:75px;text-align:right;font-size:11px">無需輔具</span><span style="width:50px;text-align:right">2</span></div>
+    <div class="trip-hdr"><span>Lewis Hamilton - 第1趟 07:00 預計發車</span></div>
+    <div class="case-row"><span style="width:55px;color:#555">07:10</span><span style="width:130px;font-weight:500">[2]-168 黃挺生</span><span style="width:75px;color:#666">一到日</span><span style="flex:1;color:#555;font-size:12px">彰化縣彰化市南郭路168號</span><span style="width:65px;text-align:right">40</span><span style="width:75px;text-align:right;font-size:11px">無需輔具</span><span style="width:50px;text-align:right">3</span></div>
+    <div class="section-bar">回程</div>
+    <div class="trip-hdr"><span>呂eva 0626 - 第1趟 16:00 預計發車</span></div>
+    <div class="case-row"><span style="width:55px;color:#555">16:30</span><span style="width:130px;font-weight:500">[1]-1 王美華</span><span style="width:75px;color:#666">一到五</span><span style="flex:1;color:#555;font-size:12px">6F., No. 213, Sec. 3, Beixin Rd.</span><span style="width:65px;text-align:right">2</span><span style="width:75px;text-align:right;font-size:11px">無需輔具</span><span style="width:50px;text-align:right">—</span></div>
+  </div>
+  <button class="fab-btn">+</button>
+</div>
+
+<!-- PAGE 1: 智能派車 -->
+<div id="page-smart" class="page">
+  <div class="teal-bar">
+    <button class="icon-btn" onclick="showPage('transport')">←</button>
+    <span>智能派車</span>
+    <div style="flex:1"></div>
+    <select><option>上午來程</option><option>下午回程</option></select>
+  </div>
+  <div class="smart-body">
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <select onchange="selectCar(this.value)" style="flex:1" id="car-select">
+          <option value="all">全部車輛</option>
+          <option value="A">甲車</option><option value="B">乙車</option><option value="C">丙車</option>
+        </select>
+        <select style="font-size:12px;padding:5px 7px;border-radius:6px;border:1px solid #ccc;background:#fff">
+          <option>全趟次</option><option>第1趟</option><option>第2趟</option><option>第3趟</option>
+        </select>
+        <button class="btn-change-log" onclick="openChangeLog()">異動紀錄</button>
+      </div>
+      <div class="car-tabs">
+        <div class="ctab-wrap">
+          <span class="ctab" style="background:#e0f7f4;color:#0f6e56;border-color:#9fe1cb" onclick="filterCar('A',this)" id="tab-A">甲車</span>
+          <div class="ctab-tooltip"><div>👤 司機：吳山</div><div>🚗 車號：ABC-1234</div><div>👥 可載：3人 / ♿1台</div></div>
+        </div>
+        <div class="ctab-wrap">
+          <span class="ctab" style="background:#dbeafe;color:#1e40af;border-color:#93c5fd" onclick="filterCar('B',this)" id="tab-B">乙車</span>
+          <div class="ctab-tooltip"><div>👤 司機：Lewis Hamilton</div><div>🚗 車號：DEF-5678</div><div>👥 可載：8人 / ♿3台</div></div>
+        </div>
+        <div class="ctab-wrap">
+          <span class="ctab" style="background:#fef3c7;color:#92400e;border-color:#fcd34d" onclick="filterCar('C',this)" id="tab-C">丙車</span>
+          <div class="ctab-tooltip"><div>👤 司機：George Russell</div><div>🚗 車號：GHI-9012</div><div>👥 可載：3人 / ♿0台</div></div>
+        </div>
+      </div>
+      <div class="car-list" id="case-list"></div>
+    </div>
+    <div class="map-wrap"><div id="map"></div></div>
+  </div>
+
+  <!-- 派車異常提示（含超載） -->
+  <div class="conflict-panel" id="conflict-panel">
+    <div class="conflict-hdr" onclick="toggleConflict()" id="conflict-hdr">
+      <div style="display:flex;align-items:center;gap:7px;flex:1">
+        <span id="conflict-icon">⚠️</span>
+        <span style="font-size:12px;font-weight:500;color:#991b1b" id="conflict-title">派車異常提示</span>
+        <span class="conflict-badge" id="conflict-count">5 項</span>
+      </div>
+      <span id="chevron">▼</span>
+    </div>
+    <div id="conflict-body">
+      <div class="conflict-inner">
+        <!-- 未排入個案 -->
+        <div id="unassigned-section">
+          <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px">🔴 未排入車輛的個案（3 位）— 可拖曳至左側名單手動分配</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px" id="unassigned-chips">
+            <span class="uchip">🧑 李建志</span>
+            <span class="uchip wc">♿ 陳秀梅</span>
+            <span class="uchip">🧑 黃大海</span>
+          </div>
+        </div>
+        <!-- 超載警告 -->
+        <div id="overload-section">
+          <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px">🟡 車輛超載警告（2 項）</div>
+          <div style="display:flex;flex-direction:column;gap:5px" id="overload-rows">
+            <div class="overload-row">🚌 <span><strong>乙車 第1趟</strong> — 已排 9 人，超過上限（8 人）</span><span style="margin-left:auto;font-size:10px;white-space:nowrap">超載 +1</span></div>
+            <div class="overload-row" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b">♿ <span><strong>甲車 第3趟</strong> — 輪椅 2 位，超過可載（1 台）</span><span style="margin-left:auto;font-size:10px;white-space:nowrap">超載 +1</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;padding:8px 14px 10px;border-top:1px solid #eee;align-items:center">
+        <button class="btn-auto" id="btn-auto-fix" onclick="autoFix()">⚡ 自動分配未排入個案</button>
+        <div style="flex:1"></div>
+        <span style="font-size:11px;color:#999">解決異常才可匯入</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <div style="font-size:12px;color:#666;display:flex;gap:12px">
+      <span>🚌 <strong>3</strong> 輛車</span>
+      <span>👥 <strong>24</strong> 位個案</span>
+      <span id="conflict-status" style="color:#dc2626">⚠️ <strong id="conflict-count-bottom">5</strong> 項異常</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sec" onclick="resetSmartPage()">↺ 重新派車</button>
+      <button class="btn-import" id="import-btn" disabled onclick="openImportModal()">✓ 匯入</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: 結果 -->
+<div id="page-result" class="page">
+  <div class="teal-bar">
+    <button class="icon-btn" onclick="showPage('transport')">←</button>
+    <span>派車匯入完成</span>
+    <div style="flex:1"></div>
+    <div style="background:rgba(255,255,255,.2);border-radius:20px;padding:3px 10px;font-size:11px">✅ 已更新</div>
+  </div>
+  <div class="result-body">
+    <div class="sum-strip">
+      <div class="sum-box" style="background:#f0fdf4;border-color:#d1fae5"><span style="font-size:18px;font-weight:700;color:#007B6E">24</span><span style="font-size:10px;color:#666">排班個案</span></div>
+      <div class="sum-box" style="background:#f0fdf4;border-color:#d1fae5"><span style="font-size:18px;font-weight:700;color:#007B6E">7</span><span style="font-size:10px;color:#666">車次</span></div>
+      <div class="sum-box" style="background:#dbeafe;border-color:#93c5fd"><span style="font-size:18px;font-weight:700;color:#1e40af">3</span><span style="font-size:10px;color:#666">輪椅個案</span></div>
+      <div class="sum-box" style="background:#f5f5f5;border-color:#ddd"><span style="font-size:11px;font-weight:600;color:#333">2026-05-19</span><span style="font-size:10px;color:#666">起生效</span></div>
+    </div>
+    <div class="res-tabs">
+      <div class="rtab active" onclick="switchTab('t2',this)">交通安排</div>
+      <div class="rtab" onclick="switchTab('rec',this)">接送紀錄</div>
+    </div>
+    <div id="tab-t2" class="tab-pane active" style="padding-bottom:16px">
+      <div class="car-blk-hdr" style="background:#1D9E75">🚌 甲車 <span style="font-size:11px;font-weight:400;opacity:.85">— 吳山 / ABC-1234 / 可載3人/輪椅1</span></div>
+      <div class="car-blk-body">
+        <div class="trip-blk-hdr">▶ 來程 第1趟 07:00</div>
+        <div class="t-row"><div class="sdot" style="background:#1D9E75">1</div><span style="flex:1">王美華</span><span style="font-size:10px;color:#666;width:50px">07:09</span><span style="font-size:10px;color:#888;flex:2">新北市新店區北新路三段65巷4號</span></div>
+        <div class="t-row"><div class="sdot" style="background:#1D9E75">2</div><span style="flex:1">陳大明</span><span style="font-size:10px;color:#666;width:50px">07:18</span><span style="font-size:10px;color:#888;flex:2">新北市新店區環河路20號</span></div>
+        <div class="t-row"><div class="sdot" style="background:#1D9E75">3</div><span style="flex:1">林小芬</span><span style="font-size:10px;color:#666;width:50px">07:27</span><span style="font-size:10px;color:#888;flex:2">新北市新店區中正路88號</span></div>
+      </div>
+      <div class="car-blk-hdr" style="background:#378ADD">🚌 乙車 <span style="font-size:11px;font-weight:400;opacity:.85">— Lewis Hamilton / DEF-5678 / 可載8人/輪椅3</span></div>
+      <div class="car-blk-body">
+        <div class="trip-blk-hdr" style="background:#eff6ff;color:#1e3a8a;border-color:#bfdbfe">▶ 來程 第1趟 07:00</div>
+        <div class="t-row"><div class="sdot" style="background:#378ADD">1</div><span style="flex:1">張慢玉 ♿</span><span style="font-size:10px;color:#666;width:50px">07:09</span><span style="font-size:10px;color:#888;flex:2">台北市大安區信義路四段280號</span></div>
+        <div class="t-row"><div class="sdot" style="background:#378ADD">2</div><span style="flex:1">鄭嘉豪</span><span style="font-size:10px;color:#666;width:50px">07:18</span><span style="font-size:10px;color:#888;flex:2">台北市大安區敦化南路二段90號</span></div>
+        <div style="padding:6px 12px;font-size:11px;color:#999;font-style:italic">…其餘 6 位個案</div>
+      </div>
+      <div class="car-blk-hdr" style="background:#BA7517">🚌 丙車 <span style="font-size:11px;font-weight:400;opacity:.85">— George Russell / GHI-9012 / 可載3人/輪椅0</span></div>
+      <div class="car-blk-body">
+        <div class="trip-blk-hdr" style="background:#fffbeb;color:#78350f;border-color:#fde68a">▶ 來程 第1趟 07:00</div>
+        <div class="t-row"><div class="sdot" style="background:#BA7517">1</div><span style="flex:1">施仁義</span><span style="font-size:10px;color:#666;width:50px">07:09</span><span style="font-size:10px;color:#888;flex:2">台北市中山區松江路101號</span></div>
+        <div class="t-row"><div class="sdot" style="background:#BA7517">2</div><span style="flex:1">江雅惠</span><span style="font-size:10px;color:#666;width:50px">07:18</span><span style="font-size:10px;color:#888;flex:2">台北市中山區建國北路一段22號</span></div>
+        <div class="t-row"><div class="sdot" style="background:#BA7517">3</div><span style="flex:1">沈家豪</span><span style="font-size:10px;color:#666;width:50px">07:27</span><span style="font-size:10px;color:#888;flex:2">台北市中山區長安東路一段78號</span></div>
+      </div>
+    </div>
+    <div id="tab-rec" class="tab-pane">
+      <div class="rec-bar">
+        <span style="font-size:13px;font-weight:600">📅 2026-05-19（今日）</span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn-sec" style="padding:5px 10px;font-size:11px">◀</button>
+          <button class="btn-sec" style="padding:5px 10px;font-size:11px">▶</button>
+        </div>
+      </div>
+      <div class="rec-stats">
+        <span>來程人次：<strong>待執行 24</strong> / 搭乘 0 / 無搭乘 0 / 取消 0</span>
+        <span>回程人次：<strong>待執行 24</strong> / 搭乘 0 / 無搭乘 0 / 取消 0</span>
+      </div>
+      <div class="rec-sec">來程</div>
+      <div class="rec-trip-hdr"><div style="width:8px;height:8px;border-radius:50%;background:#1D9E75"></div>甲車 — 第1趟 07:00<span style="margin-left:auto;font-size:10px;color:#888">吳山</span><div style="display:flex;gap:3px;margin-left:8px"><button class="abtn g">機構發車</button><button class="abtn">回到機構</button></div></div>
+      <div class="rec-row"><span style="font-size:11px;color:#888;width:38px">07:09</span><span style="width:80px;font-weight:500">[1] 王美華</span><span style="font-size:10px;color:#888;flex:1">一到五</span><div class="act-btns"><button class="abtn">抵達</button><button class="abtn">搭乘</button><button class="abtn">無搭乘</button><button class="abtn">離開</button></div></div>
+      <div class="rec-row"><span style="font-size:11px;color:#888;width:38px">07:18</span><span style="width:80px;font-weight:500">[2] 陳大明</span><span style="font-size:10px;color:#888;flex:1">一到五</span><div class="act-btns"><button class="abtn">抵達</button><button class="abtn">搭乘</button><button class="abtn">無搭乘</button><button class="abtn">離開</button></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 確認匯入 MODAL（無異常） -->
+<div class="modal-overlay" id="modal-import-ok">
+  <div class="modal">
+    <div class="mhead">
+      <div class="micon ok">✅</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:5px">確認匯入派車結果</div>
+        <div style="font-size:13px;color:#555;line-height:1.6">匯入後，將自動更新交通安排與接送紀錄名單。</div>
+      </div>
+    </div>
+    <div class="mchecklist">
+      <div class="mcheck"><span style="color:#007B6E;font-weight:700;font-size:15px">✓</span><span>交通安排 — 車輛趟次與個案名單（共 7 車次）</span></div>
+      <div class="mcheck"><span style="color:#007B6E;font-weight:700;font-size:15px">✓</span><span>接送紀錄 — 自今日起每日自動生成</span></div>
+    </div>
+    <div class="mwarn">⚠️ 既有安排將被覆蓋，此動作<strong>無法還原</strong>，請再次確認後再匯入。</div>
+    <div class="mfoot">
+      <button class="mbtn-cancel" onclick="closeAllModals()">取消</button>
+      <button class="mbtn-confirm" onclick="confirmImport()">確定匯入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 確認匯入 MODAL（有異常） -->
+<div class="modal-overlay" id="modal-import-warn">
+  <div class="modal">
+    <div class="mhead">
+      <div class="micon warn">❗</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#991b1b;margin-bottom:5px">尚有派車異常</div>
+        <div style="font-size:13px;color:#555;line-height:1.6">目前仍有 <strong id="warn-count">5</strong> 項派車異常，是否確定仍要匯入？</div>
+      </div>
+    </div>
+    <div class="mwarn-red">
+      ⚠️ 匯入後部分個案可能無車可搭乘，且既有安排將被覆蓋，此動作<strong>無法還原</strong>。
+    </div>
+    <div class="mchecklist">
+      <div class="mcheck"><span style="color:#007B6E;font-weight:700;font-size:15px">✓</span><span>交通安排 — 車輛趟次與個案名單</span></div>
+      <div class="mcheck"><span style="color:#007B6E;font-weight:700;font-size:15px">✓</span><span>接送紀錄 — 自今日起每日自動生成</span></div>
+    </div>
+    <div class="mfoot">
+      <button class="mbtn-cancel" onclick="closeAllModals()">取消</button>
+      <button class="mbtn-confirm-warn" onclick="confirmImport()">確定，仍要匯入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 異動紀錄 MODAL -->
+<div class="modal-overlay" id="modal-changelog">
+  <div class="changelog-modal">
+    <div class="mhead" style="flex-shrink:0">
+      <div class="micon" style="background:#f0fdf4;font-size:18px">📋</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:#111;margin-bottom:3px">本次派車異動紀錄</div>
+        <div style="font-size:11px;color:#888">相較於上次儲存的交通安排，本次的異動如下</div>
+      </div>
+      <button onclick="closeAllModals()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#888;padding:0 4px">✕</button>
+    </div>
+    <div class="cl-body">
+      <div class="cl-section">車輛異動</div>
+      <div class="cl-row">
+        <span class="cl-tag moved">換車</span>
+        <span style="flex:1;font-weight:500">王美華</span>
+        <span style="color:#888;font-size:11px">乙車 第1趟</span>
+        <span class="cl-arrow">→</span>
+        <span style="color:#007B6E;font-size:11px;font-weight:500">甲車 第1趟</span>
+      </div>
+      <div class="cl-row">
+        <span class="cl-tag moved">換車</span>
+        <span style="flex:1;font-weight:500">陳大明</span>
+        <span style="color:#888;font-size:11px">乙車 第1趟</span>
+        <span class="cl-arrow">→</span>
+        <span style="color:#007B6E;font-size:11px;font-weight:500">甲車 第1趟</span>
+      </div>
+      <div class="cl-row">
+        <span class="cl-tag moved">換車</span>
+        <span style="flex:1;font-weight:500">方淑芬</span>
+        <span style="color:#888;font-size:11px">甲車 第2趟</span>
+        <span class="cl-arrow">→</span>
+        <span style="color:#007B6E;font-size:11px;font-weight:500">丙車 第2趟</span>
+      </div>
+      <div class="cl-row">
+        <span class="cl-tag moved">換車</span>
+        <span style="flex:1;font-weight:500">唐義雄</span>
+        <span style="color:#888;font-size:11px">甲車 第2趟</span>
+        <span class="cl-arrow">→</span>
+        <span style="color:#007B6E;font-size:11px;font-weight:500">丙車 第2趟</span>
+      </div>
+      <div class="cl-section" style="margin-top:4px">無車可搭乘</div>
+      <div class="cl-row">
+        <span class="cl-tag unassigned">未排入</span>
+        <span style="flex:1;font-weight:500">李建志</span>
+        <span style="color:#888;font-size:11px">乙車 第1趟</span>
+        <span class="cl-arrow">→</span>
+        <span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span>
+      </div>
+      <div class="cl-row">
+        <span class="cl-tag unassigned">未排入</span>
+        <span style="flex:1;font-weight:500">陳秀梅 ♿</span>
+        <span style="color:#888;font-size:11px">甲車 第3趟</span>
+        <span class="cl-arrow">→</span>
+        <span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span>
+      </div>
+      <div class="cl-row">
+        <span class="cl-tag unassigned">未排入</span>
+        <span style="flex:1;font-weight:500">黃大海</span>
+        <span style="color:#888;font-size:11px">乙車 第1趟</span>
+        <span class="cl-arrow">→</span>
+        <span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span>
+      </div>
+      <div class="cl-section" style="margin-top:4px">新加入個案</div>
+      <div class="cl-row">
+        <span class="cl-tag new">新增</span>
+        <span style="flex:1;font-weight:500">龔志明</span>
+        <span style="color:#888;font-size:11px">—</span>
+        <span class="cl-arrow">→</span>
+        <span style="color:#007B6E;font-size:11px;font-weight:500">丙車 第3趟</span>
+      </div>
+    </div>
+    <div class="mfoot" style="flex-shrink:0">
+      <button class="mbtn-cancel" onclick="closeAllModals()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ 匯入成功！正在跳轉至結果頁面…</div>
+
+<script>
+const CAR_COLORS={A:'#1D9E75',B:'#378ADD',C:'#BA7517'};
+const CAR_NAMES={A:'甲車',B:'乙車',C:'丙車'};
+const INST={lat:25.0165,lng:121.5330};
+const CASES=[
+  {id:1,name:'王美華',car:'A',trip:1,wc:false,addr:'新北市新店區北新路三段65巷4號',lat:24.985,lng:121.542},
+  {id:2,name:'陳大明',car:'A',trip:1,wc:false,addr:'新北市新店區環河路20號',lat:24.978,lng:121.537},
+  {id:3,name:'林小芬',car:'A',trip:1,wc:false,addr:'新北市新店區中正路88號',lat:24.972,lng:121.528},
+  {id:4,name:'黃阿嬤',car:'A',trip:2,wc:false,addr:'新北市新店區寶橋路235巷',lat:24.990,lng:121.546},
+  {id:5,name:'吳老伯',car:'A',trip:2,wc:false,addr:'新北市新店區民族路22號',lat:24.983,lng:121.549},
+  {id:6,name:'周天賜',car:'A',trip:2,wc:false,addr:'新北市新店區安和路一段128號',lat:24.976,lng:121.520},
+  {id:7,name:'蔡玉英',car:'A',trip:3,wc:false,addr:'新北市新店區文中路45號',lat:24.969,lng:121.515},
+  {id:8,name:'李春花',car:'A',trip:3,wc:true,addr:'新北市新店區建國路76號',lat:24.980,lng:121.530},
+  {id:10,name:'趙月娥',car:'A',trip:3,wc:false,addr:'新北市新店區復興路二段31號',lat:24.966,lng:121.535},
+  {id:9,name:'張慢玉',car:'B',trip:1,wc:true,addr:'台北市大安區信義路四段280號',lat:25.033,lng:121.551},
+  {id:11,name:'鄭嘉豪',car:'B',trip:1,wc:false,addr:'台北市大安區敦化南路二段90號',lat:25.039,lng:121.557},
+  {id:12,name:'許麗珍',car:'B',trip:1,wc:false,addr:'台北市大安區仁愛路四段122號',lat:25.036,lng:121.539},
+  {id:13,name:'曾阿發',car:'B',trip:1,wc:false,addr:'台北市中正區羅斯福路三段100號',lat:25.022,lng:121.529},
+  {id:14,name:'葉明珠',car:'B',trip:1,wc:false,addr:'台北市中正區汀州路三段155號',lat:25.019,lng:121.523},
+  {id:15,name:'洪水旺',car:'B',trip:1,wc:false,addr:'台北市萬華區西藏路200號',lat:25.028,lng:121.499},
+  {id:16,name:'謝秀蘭',car:'B',trip:1,wc:false,addr:'台北市中山區民生東路二段147號',lat:25.056,lng:121.534},
+  {id:17,name:'廖進財',car:'B',trip:1,wc:false,addr:'台北市松山區南京東路五段100號',lat:25.051,lng:121.568},
+  {id:18,name:'施仁義',car:'C',trip:1,wc:false,addr:'台北市中山區松江路101號',lat:25.049,lng:121.530},
+  {id:19,name:'江雅惠',car:'C',trip:1,wc:false,addr:'台北市中山區建國北路一段22號',lat:25.053,lng:121.535},
+  {id:20,name:'沈家豪',car:'C',trip:1,wc:false,addr:'台北市中山區長安東路一段78號',lat:25.047,lng:121.528},
+  {id:21,name:'方淑芬',car:'C',trip:2,wc:false,addr:'台北市士林區中正路238號',lat:25.093,lng:121.526},
+  {id:22,name:'唐義雄',car:'C',trip:2,wc:false,addr:'台北市士林區文林路600號',lat:25.087,lng:121.523},
+  {id:23,name:'韓美玲',car:'C',trip:2,wc:false,addr:'台北市士林區天母東路88號',lat:25.102,lng:121.540},
+  {id:24,name:'龔志明',car:'C',trip:3,wc:false,addr:'台北市內湖區內湖路一段388號',lat:25.068,lng:121.579},
+];
+const orderedList={};
+CASES.forEach(c=>{const k=`${c.car}-${c.trip}`;if(!orderedList[k])orderedList[k]=[];if(!orderedList[k].includes(c.id))orderedList[k].push(c.id);});
+function getOrdered(car,trip){return(orderedList[`${car}-${trip}`]||[]).map(id=>CASES.find(c=>c.id===id)).filter(Boolean);}
+
+let activeCar='all', map=null, mapReady=false, layers={}, markers={}, dragSrcId=null, conflictOpen=true;
+let totalConflicts=5; // track anomaly count
+
+function makeIcon(col,seq,wc,sz){
+  const s=sz||28,b=wc?'#1e40af':'#fff';
+  return L.divIcon({html:`<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s+8}"><circle cx="${s/2}" cy="${s/2}" r="${s/2-1}" fill="${col}" stroke="${b}" stroke-width="2"/><text x="${s/2}" y="${s/2+4}" text-anchor="middle" font-size="${Math.round(s*.38)}" font-weight="bold" fill="#fff" font-family="sans-serif">${seq}</text><polygon points="${s/2-4},${s-2} ${s/2+4},${s-2} ${s/2},${s+6}" fill="${col}"/></svg>`,className:'',iconSize:[s,s+8],iconAnchor:[s/2,s+8],popupAnchor:[0,-(s+8)]});
+}
+function makeInstIcon(){return L.divIcon({html:`<svg xmlns="http://www.w3.org/2000/svg" width="36" height="42"><rect x="3" y="3" width="30" height="30" rx="6" fill="#007B6E" stroke="#fff" stroke-width="2"/><text x="18" y="22" text-anchor="middle" font-size="15" fill="#fff" font-family="sans-serif">🏠</text><polygon points="14,33 22,33 18,41" fill="#007B6E"/></svg>`,className:'',iconSize:[36,42],iconAnchor:[18,42],popupAnchor:[0,-44]});}
+function popupHTML(c,seq){
+  const col=CAR_COLORS[c.car],h=c.trip===1?'07:00':c.trip===2?'07:30':'08:00';
+  return `<div class="tt-box"><div class="tt-name">${c.name}</div><div class="tt-div"></div><div class="tt-row">📍 <span>${c.addr}</span></div><div class="tt-div"></div><div class="tt-badges"><span class="tt-badge" style="background:${col}22;color:${col}">🚌 ${CAR_NAMES[c.car]}</span><span class="tt-badge" style="background:#f1f1f1;color:#444">第${c.trip}趟 ${h}</span><span class="tt-badge" style="background:#f1f1f1;color:#444">#${seq}</span>${c.wc?'<span class="tt-badge" style="background:#dbeafe;color:#1e40af">♿</span>':''}</div></div>`;
+}
+
+function initMap(){
+  if(mapReady)return;
+  map=L.map('map',{zoomControl:true}).setView([25.025,121.535],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
+  L.marker([INST.lat,INST.lng],{icon:makeInstIcon(),zIndexOffset:1000}).addTo(map).bindPopup('<div class="tt-box"><div class="tt-name">🏠 日照中心</div></div>');
+  mapReady=true;
+  redrawMap();
+}
+
+function clearMapLayers(){Object.values(layers).forEach(l=>{try{map.removeLayer(l);}catch(e){}});Object.values(markers).forEach(m=>{try{map.removeLayer(m);}catch(e){}});layers={};markers={};}
+
+function redrawMap(){
+  if(!mapReady)return;
+  clearMapLayers();
+  ['A','B','C'].forEach(car=>{
+    const col=CAR_COLORS[car];
+    const isA=(activeCar==='all'||car===activeCar);
+    [...new Set(CASES.filter(c=>c.car===car).map(c=>c.trip))].forEach(t=>{
+      const tc=getOrdered(car,t);
+      layers[`${car}-${t}`]=L.polyline([[INST.lat,INST.lng],...tc.map(c=>[c.lat,c.lng])],{color:col,weight:isA?3:1,opacity:isA?.85:.15,dashArray:isA?null:'6,6'}).addTo(map);
+      tc.forEach((c,i)=>{
+        markers[c.id]=L.marker([c.lat,c.lng],{icon:makeIcon(col,i+1,c.wc,isA?28:18),opacity:isA?1:.3,zIndexOffset:isA?500:0})
+          .addTo(map).bindPopup(popupHTML(c,i+1),{maxWidth:260});
+      });
+    });
+  });
+}
+
+function filterCar(car,el){
+  activeCar=car;
+  document.querySelectorAll('.ctab').forEach(t=>t.style.fontWeight='500');
+  if(el) el.style.fontWeight='700';
+  redrawMap();renderList();
+  if(mapReady&&car!=='all'){
+    map.fitBounds(L.latLngBounds(CASES.filter(c=>c.car===car).map(c=>[c.lat,c.lng]).concat([[INST.lat,INST.lng]])),{padding:[30,30]});
+  } else if(mapReady){
+    map.setView([25.025,121.535],12);
+  }
+}
+
+function selectCar(v){
+  activeCar=v;
+  redrawMap();renderList();
+  if(mapReady&&v!=='all'){
+    map.fitBounds(L.latLngBounds(CASES.filter(c=>c.car===v).map(c=>[c.lat,c.lng]).concat([[INST.lat,INST.lng]])),{padding:[30,30]});
+  } else if(mapReady){
+    map.setView([25.025,121.535],12);
+  }
+}
+
+function focusCase(id){const c=CASES.find(x=>x.id===id);if(!c||!mapReady)return;map.setView([c.lat,c.lng],15,{animate:true});if(markers[id])markers[id].openPopup();}
+
+function renderList(){
+  const el=document.getElementById('case-list');
+  // determine which cars to show
+  const carsToShow = activeCar==='all'?['A','B','C']:[activeCar];
+  let html='';
+  carsToShow.forEach(car=>{
+    const col=CAR_COLORS[car];
+    const trips=[...new Set(CASES.filter(c=>c.car===car).map(c=>c.trip))].sort();
+    if(activeCar==='all'){
+      html+=`<div style="padding:5px 10px 3px;font-size:11px;font-weight:600;background:#f0f0f0;color:#444;border-bottom:1px solid #e0e0e0;">🚌 ${CAR_NAMES[car]}</div>`;
+    }
+    trips.forEach(t=>{
+      const tc=getOrdered(car,t),h=t===1?'07:00':t===2?'07:30':'08:00';
+      html+=`<div style="background:${col}"><div class="trip-header"><div style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.6)"></div>第${t}趟 ${h}<span style="margin-left:auto;font-size:10px;opacity:.8">${tc.length}人</span></div></div>`;
+      tc.forEach((c,i)=>{
+        html+=`<div class="case-item" draggable="true" data-id="${c.id}" data-car="${car}" data-trip="${t}">
+          <span style="color:#ccc;font-size:14px;cursor:grab">⠿</span>
+          <div class="num-badge" style="background:${col}">${i+1}</div>
+          <span style="flex:1;font-size:12px">${c.name}</span>
+          ${c.wc?'<span class="chip-wc">♿</span>':''}
+          <span style="font-size:10px;color:#999">0${6+t}:${String(i*9).padStart(2,'0')}</span>
+        </div>`;
+      });
+    });
+  });
+  el.innerHTML=html;
+  // attach drag events only for items belonging to same car
+  document.querySelectorAll('.case-item').forEach(item=>{
+    item.addEventListener('dragstart',e=>{dragSrcId=parseInt(item.dataset.id);item.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    item.addEventListener('dragend',()=>{item.classList.remove('dragging');document.querySelectorAll('.case-item').forEach(x=>x.classList.remove('drag-over-above','drag-over-below'));dragSrcId=null;});
+    item.addEventListener('dragover',e=>{
+      e.preventDefault();
+      if(dragSrcId===null)return;
+      const sc=CASES.find(c=>c.id===dragSrcId);
+      const tc=CASES.find(c=>c.id===parseInt(item.dataset.id));
+      if(!sc||!tc||sc.car!==tc.car)return; // only same car
+      const r=item.getBoundingClientRect();
+      document.querySelectorAll('.case-item').forEach(x=>x.classList.remove('drag-over-above','drag-over-below'));
+      item.classList.add(e.clientY<r.top+r.height/2?'drag-over-above':'drag-over-below');
+    });
+    item.addEventListener('dragleave',()=>item.classList.remove('drag-over-above','drag-over-below'));
+    item.addEventListener('drop',e=>{
+      e.preventDefault();if(dragSrcId===null)return;
+      const srcId=dragSrcId,tgtId=parseInt(item.dataset.id);if(srcId===tgtId)return;
+      const sc=CASES.find(c=>c.id===srcId),tc=CASES.find(c=>c.id===tgtId);
+      if(!sc||!tc||sc.car!==tc.car)return;
+      const sk=`${sc.car}-${sc.trip}`,tk=`${tc.car}-${tc.trip}`;
+      orderedList[sk]=orderedList[sk].filter(id=>id!==srcId);sc.trip=tc.trip;
+      if(!orderedList[tk])orderedList[tk]=[];
+      const ti=orderedList[tk].indexOf(tgtId),r=item.getBoundingClientRect();
+      orderedList[tk].splice(e.clientY>=(r.top+r.height/2)?ti+1:ti,0,srcId);
+      item.classList.remove('drag-over-above','drag-over-below');renderList();redrawMap();
+    });
+    item.addEventListener('click',()=>focusCase(parseInt(item.dataset.id)));
+  });
+}
+
+function toggleConflict(){
+  conflictOpen=!conflictOpen;
+  document.getElementById('conflict-body').style.display=conflictOpen?'block':'none';
+  document.getElementById('chevron').textContent=conflictOpen?'▼':'▶';
+}
+
+function updateConflictCount(n){
+  totalConflicts=n;
+  document.getElementById('conflict-count').textContent=n+' 項';
+  document.getElementById('conflict-count-bottom').textContent=n;
+  if(n===0){
+    document.getElementById('conflict-count').style.background='#007B6E';
+    document.getElementById('conflict-hdr').style.background='#f0fdf4';
+    document.getElementById('conflict-hdr').style.borderBottomColor='#86efac';
+    document.getElementById('conflict-icon').textContent='✅';
+    document.getElementById('conflict-title').style.color='#166534';
+    document.getElementById('conflict-status').style.color='#0F6E56';
+    document.getElementById('import-btn').disabled=false;
+  }
+}
+
+function autoFix(){
+  // Resolve unassigned only — overload stays
+  document.getElementById('unassigned-chips').innerHTML='<span style="font-size:11px;color:#007B6E">✓ 所有個案已分配完畢</span>';
+  document.getElementById('btn-auto-fix').disabled=true;
+  // still 2 overload items remain
+  updateConflictCount(2);
+  // overload resolved demo: keep overload section visible
+  document.getElementById('import-btn').disabled=false; // allow import with remaining warnings
+}
+
+function openChangeLog(){
+  document.getElementById('modal-changelog').classList.add('show');
+}
+
+function openImportModal(){
+  closeAllModals();
+  if(totalConflicts>0){
+    document.getElementById('warn-count').textContent=totalConflicts;
+    document.getElementById('modal-import-warn').classList.add('show');
+  } else {
+    document.getElementById('modal-import-ok').classList.add('show');
+  }
+}
+
+function closeAllModals(){
+  document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('show'));
+}
+
+function confirmImport(){
+  closeAllModals();
+  const t=document.getElementById('toast');t.classList.add('show');
+  setTimeout(()=>{t.classList.remove('show');showPage('result');},1200);
+}
+
+function resetSmartPage(){
+  location.reload();
+}
+
+function switchTab(name,el){
+  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+  document.querySelectorAll('.tab-pane').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(name==='smart'){
+    setTimeout(()=>{
+      initMap();
+      if(map)map.invalidateSize();
+      renderList();
+    },150);
+  }
+}
+function goSmart(){showPage('smart');}
+
+// close modals on overlay click or ESC
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',function(e){if(e.target===this)closeAllModals();});
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllModals();});
+</script>
+</body>
+</html>
