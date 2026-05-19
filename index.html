@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交通安排 — 智能派車</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Noto Sans TC',sans-serif;font-size:13px;color:#1a1a1a;background:#f0f0f0}
+.page{display:none;position:absolute;inset:0;flex-direction:column;overflow:hidden}
+.page.active{display:flex}
+.teal-bar{background:#007B6E;color:#fff;padding:0 14px;height:48px;display:flex;align-items:center;gap:10px;font-size:16px;font-weight:500;flex-shrink:0;z-index:10}
+.teal-bar select{font-size:11px;padding:3px 6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:6px}
+.top-icon{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#fff;border:none;flex-shrink:0}
+.top-icon:hover{background:rgba(255,255,255,.25)}
+.back-btn{background:none;border:none;color:#fff;cursor:pointer;font-size:20px;padding:0 2px;line-height:1}
+/* PAGE 0 */
+.p0-toolbar{background:#fff;border-bottom:1px solid #e0e0e0;padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.p0-search{flex:0 0 140px;position:relative}
+.p0-search input{width:100%;padding:6px 10px 6px 30px;border:1px solid #ccc;border-radius:6px;font-size:12px}
+.p0-search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#999;font-size:13px}
+.filter-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;background:#fff;cursor:pointer;color:#333;white-space:nowrap}
+.filter-chip:hover{background:#f5f5f5}
+.filter-chip svg{width:10px;height:10px}
+.btn-smart-p0{background:none;border:1.5px solid #dc2626;color:#dc2626;padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:auto}
+.btn-smart-p0:hover{background:#dc2626;color:#fff}
+.p0-list-header{display:flex;align-items:center;padding:6px 16px;font-size:11px;color:#888;background:#fafafa;border-bottom:1px solid #eee;flex-shrink:0}
+.p0-list{flex:1;overflow-y:auto}
+.p0-section-bar{background:#9e9e9e;color:#fff;padding:6px 16px;font-size:12px;font-weight:600}
+.p0-trip-hdr{background:#f5f5f5;padding:8px 16px;font-size:12px;color:#444;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between}
+.p0-info-btn{width:24px;height:24px;border-radius:50%;background:#e0e0e0;border:none;cursor:pointer;font-size:11px;color:#555}
+.p0-row{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid #f0f0f0;gap:8px;font-size:13px}
+.p0-row:hover{background:#fafafa}
+.c-time{width:55px;color:#555;font-size:12px;flex-shrink:0}
+.c-name{width:160px;font-weight:500;flex-shrink:0}
+.c-freq{width:80px;color:#666;font-size:12px;flex-shrink:0}
+.c-addr{flex:1;color:#555;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-dur{width:65px;text-align:right;color:#555;font-size:12px;flex-shrink:0}
+.c-aid{width:80px;text-align:right;color:#666;font-size:11px;flex-shrink:0}
+.c-note{width:80px;text-align:right;color:#888;font-size:11px;flex-shrink:0}
+.fab{position:absolute;bottom:20px;right:16px;width:48px;height:48px;border-radius:50%;background:#007B6E;border:none;color:#fff;font-size:28px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
+/* PAGE 1 */
+.smart-body{flex:1;display:flex;min-height:0}
+.sidebar{width:285px;min-width:285px;border-right:1px solid #ddd;display:flex;flex-direction:column;background:#fff;overflow:hidden;flex-shrink:0}
+.sidebar-top{padding:8px 10px;border-bottom:1px solid #ddd;display:flex;gap:5px;align-items:center}
+.s-sel{font-size:12px;padding:5px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;flex:1}
+.btn-log{background:none;border:1.5px solid #dc2626;color:#dc2626;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0}
+.btn-log:hover{background:#dc2626;color:#fff}
+.filter-bar{padding:6px 10px;border-bottom:1px solid #ddd;display:flex;gap:5px;align-items:center;background:#fafafa}
+.filter-bar label{font-size:11px;color:#666;white-space:nowrap}
+.filter-bar select{font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;flex:1}
+.car-tabs{padding:8px 10px;display:flex;gap:5px;flex-wrap:wrap;border-bottom:1px solid #ddd}
+.ctab-wrap{position:relative}
+.ctab{font-size:11px;padding:4px 10px;border-radius:10px;cursor:pointer;font-weight:500;border:1px solid transparent;display:inline-block}
+.ctab-tt{display:none;position:absolute;top:calc(100% + 6px);left:0;background:#1a1a1a;color:#fff;font-size:11px;border-radius:6px;padding:7px 10px;white-space:nowrap;z-index:200;line-height:1.7;box-shadow:0 3px 10px rgba(0,0,0,.25);pointer-events:none}
+.ctab-tt::before{content:'';position:absolute;top:-5px;left:14px;border:5px solid transparent;border-bottom-color:#1a1a1a;border-top:none}
+.ctab-wrap:hover .ctab-tt{display:block}
+.car-list{flex:1;overflow-y:auto;padding:4px 0}
+.trip-hdr-row{display:flex;align-items:center;padding:5px 10px;font-size:11px;font-weight:500;color:#fff}
+.case-item{padding:6px 10px 6px 8px;display:flex;align-items:center;gap:5px;cursor:grab;border-bottom:1px solid #f0f0f0;user-select:none}
+.case-item:hover{background:#f9f9f9}
+.case-item.dragging{opacity:.35}
+.case-item.drag-over-above{border-top:2.5px solid #007B6E}
+.case-item.drag-over-below{border-bottom:2.5px solid #007B6E}
+.nbadge{width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;color:#fff}
+.wc-chip{font-size:10px;background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:6px}
+.del-btn{background:none;border:none;cursor:pointer;color:#d1d5db;font-size:13px;padding:0 2px;flex-shrink:0;line-height:1}
+.del-btn:hover{color:#dc2626}
+.map-wrap{flex:1;position:relative;min-width:0}
+#map{position:absolute;inset:0}
+/* conflict */
+.cpanel{border-top:1px solid #ddd;background:#fff;flex-shrink:0;max-height:230px;overflow-y:auto}
+.chdr{padding:8px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;background:#fef2f2;border-bottom:1px solid #fca5a5;position:sticky;top:0;z-index:2}
+.cbadge{background:#dc2626;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:8px}
+.cinner{padding:10px 14px;display:flex;flex-direction:column;gap:10px}
+.uchip{font-size:11px;padding:3px 9px;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b}
+.uchip.wc{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.orow{display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 8px;border-radius:6px;background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+.bbar{background:#fff;border-top:1px solid #ddd;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.btn-imp{background:#007B6E;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer}
+.btn-imp:disabled{background:#9ca3af;cursor:not-allowed}
+.btn-sec{background:#fff;color:#333;border:1px solid #ccc;padding:8px 14px;border-radius:6px;font-size:13px;cursor:pointer}
+.btn-auto{font-size:11px;padding:5px 12px;border-radius:6px;background:#007B6E;color:#fff;border:none;cursor:pointer;font-weight:500}
+.btn-auto:disabled{background:#9ca3af;cursor:not-allowed}
+/* modals */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s}
+.mo.show{opacity:1;pointer-events:all}
+.mdl{background:#fff;border-radius:12px;width:440px;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;overflow:hidden;border:1px solid #ddd}
+.mdl-sm{background:#fff;border-radius:12px;width:380px;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;overflow:hidden;border:1px solid #ddd}
+.cl-mdl{background:#fff;border-radius:12px;width:480px;max-height:560px;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;overflow:hidden;border:1px solid #ddd;display:flex;flex-direction:column}
+.mo.show .mdl,.mo.show .mdl-sm,.mo.show .cl-mdl{transform:scale(1)}
+.mhd{background:#f8f8f8;padding:18px 20px 16px;display:flex;gap:14px;border-bottom:1px solid #e8e8e8;align-items:flex-start}
+.mic{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px}
+.mcl{margin:14px 20px;padding:12px 14px;background:#f5f5f5;border-radius:8px;border:1px solid #e8e8e8;display:flex;flex-direction:column;gap:8px}
+.mck{display:flex;align-items:center;gap:10px;font-size:13px;color:#222}
+.mwy{margin:0 20px 14px;padding:10px 13px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#78350f;line-height:1.6}
+.mwr{margin:0 20px 14px;padding:10px 13px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.6}
+.mft{background:#f8f8f8;padding:14px 20px;border-top:1px solid #e8e8e8;display:flex;gap:8px;justify-content:flex-end}
+.mb-c{background:#fff;color:#555;border:1px solid #ccc;padding:9px 20px;border-radius:6px;font-size:13px;cursor:pointer}
+.mb-ok{background:#007B6E;color:#fff;border:none;padding:9px 26px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.mb-ok:hover{background:#005f56}
+.mb-d{background:#dc2626;color:#fff;border:none;padding:9px 26px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.mb-d:hover{background:#b91c1c}
+.cl-body{flex:1;overflow-y:auto;padding:0 0 8px}
+.cl-sec{padding:8px 16px 4px;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:.5px}
+.cl-row{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid #f5f5f5;font-size:12px}
+.cl-row:last-child{border-bottom:none}
+.cl-tag{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.cl-tag.mv{background:#dbeafe;color:#1e40af}
+.cl-tag.un{background:#fef2f2;color:#dc2626}
+.cl-tag.nw{background:#e0f7f4;color:#065f46}
+.cl-ar{color:#9ca3af;font-size:12px;flex-shrink:0}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:10000;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.leaflet-popup-content-wrapper{border-radius:10px!important;border:1px solid #ccc;box-shadow:0 2px 10px rgba(0,0,0,.12)!important;padding:0!important}
+.leaflet-popup-content{margin:0!important;padding:0!important}
+.leaflet-popup-tip-container{display:none}
+.ttb{padding:10px 13px;min-width:190px;max-width:230px;font-size:12px;background:#fff}
+.ttn{font-size:14px;font-weight:700;margin-bottom:6px;color:#111}
+.ttdv{height:1px;background:#eee;margin:6px 0}
+.ttr{display:flex;gap:6px;color:#555;font-size:11px;line-height:1.5;margin-bottom:4px}
+.ttbg{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
+.ttbg span{font-size:10px;padding:2px 7px;border-radius:8px}
+</style>
+</head>
+<body>
+
+<!-- PAGE 0 -->
+<div id="page-transport" class="page active">
+  <div class="teal-bar">
+    <span>交通安排</span>
+    <div style="flex:1"></div>
+    <button class="top-icon" title="設定">⚙</button>
+    <button class="top-icon" title="說明">ℹ</button>
+    <button class="top-icon" title="列印">🖨</button>
+  </div>
+  <div class="p0-toolbar">
+    <div class="p0-search">
+      <span class="p0-search-icon">🔍</span>
+      <input placeholder="搜尋">
+    </div>
+    <div class="filter-chip">服務中<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg></div>
+    <div class="filter-chip">全部方向<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg></div>
+    <div class="filter-chip">全部安排<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg></div>
+    <div class="filter-chip">全車輛/路線<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg></div>
+    <button class="btn-smart-p0" onclick="goSmart()">智能派車</button>
+  </div>
+  <div class="p0-list-header">
+    <span class="c-time">預計</span><span class="c-name">姓名</span><span class="c-freq">頻率</span>
+    <span class="c-addr">地址</span><span class="c-dur">乘車時長</span><span class="c-aid">輔具</span><span class="c-note">備註</span>
+  </div>
+  <div class="p0-list" id="p0-list"></div>
+  <button class="fab">＋</button>
+</div>
+
+<!-- PAGE 1 -->
+<div id="page-smart" class="page">
+  <div class="teal-bar">
+    <button class="back-btn" onclick="showPage('transport')">←</button>
+    <span>智能派車</span>
+    <div style="flex:1"></div>
+    <select onchange="setDirFilter(this.value)" id="top-dir">
+      <option value="inbound">上午來程</option>
+      <option value="outbound">下午回程</option>
+      <option value="all" selected>全部方向</option>
+    </select>
+  </div>
+  <div class="smart-body">
+    <div class="sidebar">
+      <div class="sidebar-top">
+        <select class="s-sel" id="car-sel" onchange="setCarFilter(this.value)">
+          <option value="all">全部車輛</option>
+          <option value="A">甲車</option><option value="B">乙車</option><option value="C">丙車</option>
+        </select>
+        <select class="s-sel" id="trip-sel" onchange="setTripFilter(this.value)">
+          <option value="all">全趟次</option>
+          <option value="1">第1趟</option><option value="2">第2趟</option><option value="3">第3趟</option>
+        </select>
+        <button class="btn-log" onclick="openChangeLog()">異動紀錄</button>
+      </div>
+      <div class="filter-bar">
+        <label>方向：</label>
+        <select id="dir-sel" onchange="setDirFilter(this.value)">
+          <option value="inbound">來程</option>
+          <option value="outbound">回程</option>
+          <option value="all" selected>全部</option>
+        </select>
+      </div>
+      <div class="car-tabs">
+        <div class="ctab-wrap"><span class="ctab" id="tab-all" style="background:#f0fdf4;color:#0f6e56;border-color:#9fe1cb" onclick="setCarFilter('all');document.getElementById('car-sel').value='all'">全部</span></div>
+        <div class="ctab-wrap">
+          <span class="ctab" id="tab-A" style="background:#f5f5f5;color:#555;border-color:#ddd" onclick="setCarFilter('A');document.getElementById('car-sel').value='A'">甲車</span>
+          <div class="ctab-tt"><div>👤 吳山</div><div>🚗 ABC-1234</div><div>👥 3人 / ♿1台</div></div>
+        </div>
+        <div class="ctab-wrap">
+          <span class="ctab" id="tab-B" style="background:#f5f5f5;color:#555;border-color:#ddd" onclick="setCarFilter('B');document.getElementById('car-sel').value='B'">乙車</span>
+          <div class="ctab-tt"><div>👤 Lewis Hamilton</div><div>🚗 DEF-5678</div><div>👥 8人 / ♿3台</div></div>
+        </div>
+        <div class="ctab-wrap">
+          <span class="ctab" id="tab-C" style="background:#f5f5f5;color:#555;border-color:#ddd" onclick="setCarFilter('C');document.getElementById('car-sel').value='C'">丙車</span>
+          <div class="ctab-tt"><div>👤 George Russell</div><div>🚗 GHI-9012</div><div>👥 3人 / ♿0台</div></div>
+        </div>
+      </div>
+      <div class="car-list" id="case-list"></div>
+    </div>
+    <div class="map-wrap"><div id="map"></div></div>
+  </div>
+  <div class="cpanel">
+    <div class="chdr" onclick="toggleConflict()" id="chdr">
+      <div style="display:flex;align-items:center;gap:7px;flex:1">
+        <span id="cicon">⚠️</span>
+        <span style="font-size:12px;font-weight:500;color:#991b1b" id="ctitle">派車異常提示</span>
+        <span class="cbadge" id="ccount">5 項</span>
+      </div>
+      <span id="chev">▼</span>
+    </div>
+    <div id="cbody">
+      <div class="cinner">
+        <div id="u-section">
+          <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px">🔴 未排入車輛的個案（<span id="u-count">3</span> 位）</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px" id="u-chips"></div>
+        </div>
+        <div id="o-section">
+          <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px">🟡 車輛超載警告（2 項）</div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <div class="orow">🚌 <span><strong>乙車 第1趟</strong> — 已排 9 人，超過上限（8 人）</span><span style="margin-left:auto;font-size:10px;white-space:nowrap">超載 +1</span></div>
+            <div class="orow" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b">♿ <span><strong>甲車 第3趟</strong> — 輪椅 2 位，超過可載（1 台）</span><span style="margin-left:auto;font-size:10px;white-space:nowrap">超載 +1</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:8px 14px 10px;border-top:1px solid #eee">
+        <button class="btn-auto" id="btn-auto" onclick="autoFix()">⚡ 自動分配未排入個案</button>
+      </div>
+    </div>
+  </div>
+  <div class="bbar">
+    <div style="font-size:12px;color:#666;display:flex;gap:12px">
+      <span>🚌 <strong>3</strong> 輛車</span>
+      <span>👥 <strong id="total-c">24</strong> 位個案</span>
+      <span id="cstatus" style="color:#dc2626">⚠️ <strong id="ccount-b">5</strong> 項異常</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sec" onclick="location.reload()">↺ 重新派車</button>
+      <button class="btn-imp" id="imp-btn" disabled onclick="openImportModal()">✓ 匯入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 匯入 OK -->
+<div class="mo" id="mo-ok">
+  <div class="mdl">
+    <div class="mhd"><div class="mic" style="background:#e0f7f4">✅</div>
+      <div><div style="font-size:15px;font-weight:700;color:#111;margin-bottom:5px">確認匯入派車結果</div>
+      <div style="font-size:13px;color:#555;line-height:1.6">匯入後，將自動更新交通安排與接送紀錄名單。</div></div>
+    </div>
+    <div class="mcl">
+      <div class="mck"><span style="color:#007B6E;font-weight:700;font-size:15px">✓</span><span>交通安排 — 車輛趟次與個案名單（共 7 車次）</span></div>
+      <div class="mck"><span style="color:#007B6E;font-weight:700;font-size:15px">✓</span><span>接送紀錄 — 自明日起每日接送名單</span></div>
+    </div>
+    <div class="mwy">⚠️ 既有安排將被覆蓋，此動作<strong>無法還原</strong>，請再次確認後再匯入。</div>
+    <div class="mft"><button class="mb-c" onclick="closeAll()">取消</button><button class="mb-ok" onclick="doImport()">確定匯入</button></div>
+  </div>
+</div>
+
+<!-- 匯入 WARN -->
+<div class="mo" id="mo-warn">
+  <div class="mdl">
+    <div class="mhd"><div class="mic" style="background:#fef2f2">❗</div>
+      <div><div style="font-size:15px;font-weight:700;color:#991b1b;margin-bottom:5px">尚有派車異常</div>
+      <div style="font-size:13px;color:#555;line-height:1.6">目前仍有 <strong id="warn-n">5</strong> 項派車異常，是否確定仍要匯入？</div></div>
+    </div>
+    <div class="mwr">⚠️ 匯入後部分個案可能無車可搭乘，且既有安排將被覆蓋，此動作<strong>無法還原</strong>。</div>
+    <div class="mcl">
+      <div class="mck"><span style="color:#007B6E;font-weight:700;font-size:15px">✓</span><span>交通安排 — 車輛趟次與個案名單</span></div>
+      <div class="mck"><span style="color:#007B6E;font-weight:700;font-size:15px">✓</span><span>接送紀錄 — 自明日起每日接送名單</span></div>
+    </div>
+    <div class="mft"><button class="mb-c" onclick="closeAll()">取消</button><button class="mb-d" onclick="doImport()">確定，仍要匯入</button></div>
+  </div>
+</div>
+
+<!-- 刪除確認 -->
+<div class="mo" id="mo-del">
+  <div class="mdl-sm">
+    <div class="mhd"><div class="mic" style="background:#fef2f2;font-size:18px">🗑️</div>
+      <div><div style="font-size:15px;font-weight:700;color:#991b1b;margin-bottom:5px">移除個案</div>
+      <div style="font-size:13px;color:#555;line-height:1.6">確定要將「<span id="del-nm" style="font-weight:600;color:#111"></span>」從此趟次移除嗎？</div></div>
+    </div>
+    <div style="margin:0 20px 16px;padding:10px 13px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.6">
+      移除後此個案將進入「未排入」狀態，可重新拖曳分配或使用自動分配。
+    </div>
+    <div class="mft"><button class="mb-c" onclick="closeAll()">取消</button><button class="mb-d" onclick="doDelete()">確定移除</button></div>
+  </div>
+</div>
+
+<!-- 異動紀錄 -->
+<div class="mo" id="mo-cl">
+  <div class="cl-mdl">
+    <div class="mhd" style="flex-shrink:0">
+      <div class="mic" style="background:#f0fdf4;font-size:18px">📋</div>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:#111;margin-bottom:3px">本次派車異動紀錄</div>
+      <div style="font-size:11px;color:#888">相較於上次儲存的交通安排，本次的異動如下</div></div>
+      <button onclick="closeAll()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#888">✕</button>
+    </div>
+    <div class="cl-body">
+      <div class="cl-sec">車輛異動</div>
+      <div class="cl-row"><span class="cl-tag mv">換車</span><span style="flex:1;font-weight:500">王美華</span><span style="color:#888;font-size:11px">乙車 第1趟</span><span class="cl-ar">→</span><span style="color:#007B6E;font-size:11px;font-weight:500">甲車 第1趟</span></div>
+      <div class="cl-row"><span class="cl-tag mv">換車</span><span style="flex:1;font-weight:500">陳大明</span><span style="color:#888;font-size:11px">乙車 第1趟</span><span class="cl-ar">→</span><span style="color:#007B6E;font-size:11px;font-weight:500">甲車 第1趟</span></div>
+      <div class="cl-row"><span class="cl-tag mv">換車</span><span style="flex:1;font-weight:500">方淑芬</span><span style="color:#888;font-size:11px">甲車 第2趟</span><span class="cl-ar">→</span><span style="color:#007B6E;font-size:11px;font-weight:500">丙車 第2趟</span></div>
+      <div class="cl-sec" style="margin-top:4px">無車可搭乘</div>
+      <div class="cl-row"><span class="cl-tag un">未排入</span><span style="flex:1;font-weight:500">李建志</span><span style="color:#888;font-size:11px">乙車 第1趟</span><span class="cl-ar">→</span><span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span></div>
+      <div class="cl-row"><span class="cl-tag un">未排入</span><span style="flex:1;font-weight:500">陳秀梅 ♿</span><span style="color:#888;font-size:11px">甲車 第3趟</span><span class="cl-ar">→</span><span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span></div>
+      <div class="cl-row"><span class="cl-tag un">未排入</span><span style="flex:1;font-weight:500">黃大海</span><span style="color:#888;font-size:11px">乙車 第1趟</span><span class="cl-ar">→</span><span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span></div>
+      <div class="cl-sec" style="margin-top:4px">新加入個案</div>
+      <div class="cl-row"><span class="cl-tag nw">新增</span><span style="flex:1;font-weight:500">龔志明</span><span style="color:#888;font-size:11px">—</span><span class="cl-ar">→</span><span style="color:#007B6E;font-size:11px;font-weight:500">丙車 第3趟</span></div>
+    </div>
+    <div class="mft" style="flex-shrink:0"><button class="mb-c" onclick="closeAll()">關閉</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ 匯入成功！正在更新交通安排…</div>
+
+<script>
+const CC={A:'#1D9E75',B:'#378ADD',C:'#BA7517'};
+const CN={A:'甲車',B:'乙車',C:'丙車'};
+const DR={A:'吳山',B:'Lewis Hamilton',C:'George Russell'};
+const TT={1:'07:00',2:'07:30',3:'08:00'};
+const INST={lat:25.0165,lng:121.5330};
+
+let unpool=[
+  {id:'u1',name:'李建志',wc:false},
+  {id:'u2',name:'陳秀梅',wc:true},
+  {id:'u3',name:'黃大海',wc:false},
+];
+
+let CASES=[
+  {id:1, name:'王美華', car:'A',trip:1,wc:false,dir:'inbound', addr:'新北市新店區北新路三段65巷4號',lat:24.985,lng:121.542,freq:'一到五',dur:'2',aid:'無需輔具',note:'2'},
+  {id:2, name:'陳大明', car:'A',trip:1,wc:false,dir:'inbound', addr:'新北市新店區環河路20號',lat:24.978,lng:121.537,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:3, name:'林小芬', car:'A',trip:1,wc:false,dir:'inbound', addr:'新北市新店區中正路88號',lat:24.972,lng:121.528,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:4, name:'黃阿嬤', car:'A',trip:2,wc:false,dir:'inbound', addr:'新北市新店區寶橋路235巷',lat:24.990,lng:121.546,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:5, name:'吳老伯', car:'A',trip:2,wc:false,dir:'inbound', addr:'新北市新店區民族路22號',lat:24.983,lng:121.549,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:6, name:'周天賜', car:'A',trip:2,wc:false,dir:'inbound', addr:'新北市新店區安和路一段128號',lat:24.976,lng:121.520,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:7, name:'蔡玉英', car:'A',trip:3,wc:false,dir:'inbound', addr:'新北市新店區文中路45號',lat:24.969,lng:121.515,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:8, name:'李春花', car:'A',trip:3,wc:true, dir:'inbound', addr:'新北市新店區建國路76號',lat:24.980,lng:121.530,freq:'一到五',dur:'—',aid:'輪椅',note:'—'},
+  {id:10,name:'趙月娥', car:'A',trip:3,wc:false,dir:'inbound', addr:'新北市新店區復興路二段31號',lat:24.966,lng:121.535,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:9, name:'張慢玉', car:'B',trip:1,wc:true, dir:'inbound', addr:'台北市大安區信義路四段280號',lat:25.033,lng:121.551,freq:'一到五',dur:'20',aid:'輪椅',note:'—'},
+  {id:11,name:'鄭嘉豪', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市大安區敦化南路二段90號',lat:25.039,lng:121.557,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:12,name:'許麗珍', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市大安區仁愛路四段122號',lat:25.036,lng:121.539,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:13,name:'曾阿發', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市中正區羅斯福路三段100號',lat:25.022,lng:121.529,freq:'一到三',dur:'—',aid:'無需輔具',note:'—'},
+  {id:14,name:'葉明珠', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市中正區汀州路三段155號',lat:25.019,lng:121.523,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:15,name:'洪水旺', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市萬華區西藏路200號',lat:25.028,lng:121.499,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:16,name:'謝秀蘭', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市中山區民生東路二段147號',lat:25.056,lng:121.534,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:17,name:'廖進財', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市松山區南京東路五段100號',lat:25.051,lng:121.568,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:18,name:'施仁義', car:'C',trip:1,wc:false,dir:'inbound', addr:'台北市中山區松江路101號',lat:25.049,lng:121.530,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:19,name:'江雅惠', car:'C',trip:1,wc:false,dir:'inbound', addr:'台北市中山區建國北路一段22號',lat:25.053,lng:121.535,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:20,name:'沈家豪', car:'C',trip:1,wc:false,dir:'inbound', addr:'台北市中山區長安東路一段78號',lat:25.047,lng:121.528,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:21,name:'方淑芬', car:'C',trip:2,wc:false,dir:'inbound', addr:'台北市士林區中正路238號',lat:25.093,lng:121.526,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:22,name:'唐義雄', car:'C',trip:2,wc:false,dir:'inbound', addr:'台北市士林區文林路600號',lat:25.087,lng:121.523,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:23,name:'韓美玲', car:'C',trip:2,wc:false,dir:'inbound', addr:'台北市士林區天母東路88號',lat:25.102,lng:121.540,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:24,name:'龔志明', car:'C',trip:3,wc:false,dir:'inbound', addr:'台北市內湖區內湖路一段388號',lat:25.068,lng:121.579,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:101,name:'王美華',car:'A',trip:1,wc:false,dir:'outbound',addr:'新北市新店區北新路三段65巷4號',lat:24.985,lng:121.542,freq:'一到五',dur:'2',aid:'無需輔具',note:'—'},
+  {id:102,name:'陳大明',car:'A',trip:1,wc:false,dir:'outbound',addr:'新北市新店區環河路20號',lat:24.978,lng:121.537,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+  {id:103,name:'張慢玉',car:'B',trip:1,wc:true, dir:'outbound',addr:'台北市大安區信義路四段280號',lat:25.033,lng:121.551,freq:'一到五',dur:'20',aid:'輪椅',note:'—'},
+  {id:104,name:'施仁義',car:'C',trip:1,wc:false,dir:'outbound',addr:'台北市中山區松江路101號',lat:25.049,lng:121.530,freq:'一到五',dur:'—',aid:'無需輔具',note:'—'},
+];
+
+const OL={};
+CASES.forEach(c=>{const k=`${c.car}-${c.trip}-${c.dir}`;if(!OL[k])OL[k]=[];if(!OL[k].includes(c.id))OL[k].push(c.id);});
+function getOrd(car,trip,dir){return(OL[`${car}-${trip}-${dir}`]||[]).map(id=>CASES.find(c=>c.id===id)).filter(Boolean);}
+
+// ── P0 render ──
+function renderP0(){
+  const el=document.getElementById('p0-list');
+  const dl={inbound:'來程',outbound:'回程'};
+  let h='';
+  ['inbound','outbound'].forEach(dir=>{
+    let hasAny=false;
+    let block=`<div class="p0-section-bar">${dl[dir]}</div>`;
+    ['A','B','C'].forEach(car=>{
+      [1,2,3].forEach(t=>{
+        const tc=getOrd(car,t,dir);
+        if(!tc.length)return;
+        hasAny=true;
+        block+=`<div class="p0-trip-hdr"><span>${DR[car]} - 第${t}趟 ${TT[t]}預計發車</span><button class="p0-info-btn">ℹ</button></div>`;
+        tc.forEach((c,i)=>{
+          const pt=`0${6+t}:${String(i*9).padStart(2,'0')}`;
+          block+=`<div class="p0-row">
+            <span class="c-time">${pt}</span>
+            <span class="c-name">[${i+1}]-${String(c.id).padStart(3,'0')} ${c.name}${c.wc?' ♿':''}</span>
+            <span class="c-freq">${c.freq}</span>
+            <span class="c-addr" title="${c.addr}">${c.addr}</span>
+            <span class="c-dur">${c.dur}</span>
+            <span class="c-aid">${c.aid}</span>
+            <span class="c-note">${c.note}</span>
+          </div>`;
+        });
+      });
+    });
+    if(hasAny) h+=block;
+  });
+  el.innerHTML=h||'<div style="padding:24px;text-align:center;color:#aaa">尚無交通安排資料</div>';
+}
+
+// ── MAP ──
+let map=null,mr=false,LY={},MK={};
+function mkIcon(col,seq,wc,sz){
+  const s=sz||26,b=wc?'#1e40af':'#fff';
+  return L.divIcon({html:`<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s+8}"><circle cx="${s/2}" cy="${s/2}" r="${s/2-1}" fill="${col}" stroke="${b}" stroke-width="2"/><text x="${s/2}" y="${s/2+4}" text-anchor="middle" font-size="${Math.round(s*.38)}" font-weight="bold" fill="#fff" font-family="sans-serif">${seq}</text><polygon points="${s/2-4},${s-2} ${s/2+4},${s-2} ${s/2},${s+6}" fill="${col}"/></svg>`,className:'',iconSize:[s,s+8],iconAnchor:[s/2,s+8],popupAnchor:[0,-(s+8)]});
+}
+function mkInst(){return L.divIcon({html:`<svg xmlns="http://www.w3.org/2000/svg" width="36" height="42"><rect x="3" y="3" width="30" height="30" rx="6" fill="#007B6E" stroke="#fff" stroke-width="2"/><text x="18" y="22" text-anchor="middle" font-size="15" fill="#fff" font-family="sans-serif">🏠</text><polygon points="14,33 22,33 18,41" fill="#007B6E"/></svg>`,className:'',iconSize:[36,42],iconAnchor:[18,42],popupAnchor:[0,-44]});}
+function popH(c,seq){
+  const col=CC[c.car],h=TT[c.trip]||'--',dl=c.dir==='inbound'?'來程':'回程';
+  return `<div class="ttb"><div class="ttn">${c.name}</div><div class="ttdv"></div><div class="ttr">📍 <span>${c.addr}</span></div><div class="ttdv"></div><div class="ttbg"><span style="background:${col}22;color:${col}">🚌 ${CN[c.car]}</span><span style="background:#f1f1f1;color:#444">${dl} 第${c.trip}趟 ${h}</span><span style="background:#f1f1f1;color:#444">#${seq}</span>${c.wc?'<span style="background:#dbeafe;color:#1e40af">♿</span>':''}</div></div>`;
+}
+function initMap(){
+  if(mr)return;
+  map=L.map('map').setView([25.025,121.535],12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
+  L.marker([INST.lat,INST.lng],{icon:mkInst(),zIndexOffset:1000}).addTo(map).bindPopup('<div class="ttb"><div class="ttn">🏠 日照中心</div></div>');
+  mr=true;rdMap();
+}
+function clrMap(){Object.values(LY).forEach(l=>{try{map.removeLayer(l);}catch(e){}});Object.values(MK).forEach(m=>{try{map.removeLayer(m);}catch(e){}});LY={};MK={};}
+function rdMap(){
+  if(!mr)return;clrMap();
+  const dirs=fDir==='all'?['inbound','outbound']:[fDir];
+  const trips=fTrip==='all'?[1,2,3]:[parseInt(fTrip)];
+  const cars=fCar==='all'?['A','B','C']:[fCar];
+  cars.forEach(car=>{
+    const col=CC[car];
+    trips.forEach(t=>{dirs.forEach(dir=>{
+      const tc=getOrd(car,t,dir);if(!tc.length)return;
+      LY[`${car}-${t}-${dir}`]=L.polyline([[INST.lat,INST.lng],...tc.map(c=>[c.lat,c.lng])],{color:col,weight:2.5,opacity:.8}).addTo(map);
+      tc.forEach((c,i)=>{MK[c.id]=L.marker([c.lat,c.lng],{icon:mkIcon(col,i+1,c.wc,26),zIndexOffset:500}).addTo(map).bindPopup(popH(c,i+1),{maxWidth:260});});
+    });});
+  });
+}
+function focC(id){const c=CASES.find(x=>x.id===id);if(!c||!mr)return;map.setView([c.lat,c.lng],15,{animate:true});if(MK[id])MK[id].openPopup();}
+
+// ── FILTERS ──
+let fCar='all',fTrip='all',fDir='all';
+const TS={all:{bg:'#f0fdf4',col:'#0f6e56',bc:'#9fe1cb'},A:{bg:'#e0f7f4',col:'#0f6e56',bc:'#9fe1cb'},B:{bg:'#dbeafe',col:'#1e40af',bc:'#93c5fd'},C:{bg:'#fef3c7',col:'#92400e',bc:'#fcd34d'}};
+function setCarFilter(v){
+  fCar=v;
+  ['all','A','B','C'].forEach(k=>{const e=document.getElementById(`tab-${k}`);if(!e)return;if(k===v){const s=TS[k];e.style.background=s.bg;e.style.color=s.col;e.style.borderColor=s.bc;}else{e.style.background='#f5f5f5';e.style.color='#555';e.style.borderColor='#ddd';}});
+  renderList();rdMap();
+  if(mr&&v!=='all')map.fitBounds(L.latLngBounds(CASES.filter(c=>c.car===v).map(c=>[c.lat,c.lng]).concat([[INST.lat,INST.lng]])),{padding:[30,30]});
+  else if(mr)map.setView([25.025,121.535],12);
+}
+function setTripFilter(v){fTrip=v;renderList();rdMap();}
+function setDirFilter(v){
+  fDir=v;
+  document.getElementById('top-dir').value=v;
+  document.getElementById('dir-sel').value=v;
+  renderList();rdMap();
+}
+
+// ── SMART LIST ──
+let dSrc=null;
+function renderList(){
+  const el=document.getElementById('case-list');
+  const cars=fCar==='all'?['A','B','C']:[fCar];
+  const trips=fTrip==='all'?[1,2,3]:[parseInt(fTrip)];
+  const dirs=fDir==='all'?['inbound','outbound']:[fDir];
+  const DL={inbound:'來程',outbound:'回程'};
+  let h='',tot=0;
+  cars.forEach(car=>{
+    const col=CC[car];
+    let blk='',has=false;
+    if(fCar==='all') blk+=`<div style="padding:5px 10px 3px;font-size:11px;font-weight:600;background:#f0f0f0;color:#444;border-bottom:1px solid #ddd;display:flex;align-items:center;gap:5px"><div style="width:8px;height:8px;border-radius:50%;background:${col}"></div>${CN[car]}</div>`;
+    dirs.forEach(dir=>{trips.forEach(t=>{
+      const tc=getOrd(car,t,dir);if(!tc.length)return;
+      has=true;tot+=tc.length;
+      const bg=dir==='inbound'?col:'#6b7280';
+      blk+=`<div style="background:${bg}"><div class="trip-hdr-row"><div style="width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5)"></div>&nbsp;${DL[dir]} 第${t}趟 ${TT[t]}<span style="margin-left:auto;font-size:10px;opacity:.85">${tc.length}人</span></div></div>`;
+      tc.forEach((c,i)=>{
+        blk+=`<div class="case-item" draggable="true" data-id="${c.id}" data-car="${car}" data-trip="${t}" data-dir="${dir}">
+          <span style="color:#ccc;font-size:14px;cursor:grab">⠿</span>
+          <div class="nbadge" style="background:${col}">${i+1}</div>
+          <span style="flex:1;font-size:12px">${c.name}</span>
+          ${c.wc?'<span class="wc-chip">♿</span>':''}
+          <span style="font-size:10px;color:#999;min-width:32px">0${6+t}:${String(i*9).padStart(2,'0')}</span>
+          <button class="del-btn" onclick="pDel(event,${c.id})">🗑</button>
+        </div>`;
+      });
+    });});
+    if(has||fCar!=='all') h+=blk;
+  });
+  if(!h) h='<div style="padding:20px;text-align:center;color:#aaa;font-size:12px">目前篩選條件無資料</div>';
+  el.innerHTML=h;
+  document.getElementById('total-c').textContent=tot;
+  atkDrag();
+}
+function atkDrag(){
+  document.querySelectorAll('.case-item').forEach(item=>{
+    item.addEventListener('dragstart',e=>{dSrc=parseInt(item.dataset.id);item.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    item.addEventListener('dragend',()=>{item.classList.remove('dragging');document.querySelectorAll('.case-item').forEach(x=>x.classList.remove('drag-over-above','drag-over-below'));dSrc=null;});
+    item.addEventListener('dragover',e=>{
+      e.preventDefault();if(!dSrc)return;
+      const sc=CASES.find(c=>c.id===dSrc),tc=CASES.find(c=>c.id===parseInt(item.dataset.id));
+      if(!sc||!tc||sc.car!==tc.car||sc.dir!==tc.dir)return;
+      const r=item.getBoundingClientRect();
+      document.querySelectorAll('.case-item').forEach(x=>x.classList.remove('drag-over-above','drag-over-below'));
+      item.classList.add(e.clientY<r.top+r.height/2?'drag-over-above':'drag-over-below');
+    });
+    item.addEventListener('dragleave',()=>item.classList.remove('drag-over-above','drag-over-below'));
+    item.addEventListener('drop',e=>{
+      e.preventDefault();if(!dSrc)return;
+      const si=dSrc,ti=parseInt(item.dataset.id);if(si===ti)return;
+      const sc=CASES.find(c=>c.id===si),tc=CASES.find(c=>c.id===ti);
+      if(!sc||!tc||sc.car!==tc.car||sc.dir!==tc.dir)return;
+      const sk=`${sc.car}-${sc.trip}-${sc.dir}`,tk=`${tc.car}-${tc.trip}-${tc.dir}`;
+      OL[sk]=(OL[sk]||[]).filter(id=>id!==si);sc.trip=tc.trip;
+      if(!OL[tk])OL[tk]=[];
+      const tidx=OL[tk].indexOf(ti),r=item.getBoundingClientRect();
+      OL[tk].splice(e.clientY>=(r.top+r.height/2)?tidx+1:tidx,0,si);
+      item.classList.remove('drag-over-above','drag-over-below');renderList();rdMap();
+    });
+    item.addEventListener('click',function(e){if(!e.target.classList.contains('del-btn'))focC(parseInt(item.dataset.id));});
+  });
+}
+
+// ── CONFLICT ──
+let totalC=5,conflOpen=true;
+function renderUnassigned(){
+  document.getElementById('u-count').textContent=unpool.length;
+  const wrap=document.getElementById('u-chips');
+  if(!unpool.length){
+    wrap.innerHTML='<span style="font-size:11px;color:#007B6E">✓ 所有個案已分配完畢</span>';
+    document.getElementById('btn-auto').disabled=true;
+    return;
+  }
+  wrap.innerHTML=unpool.map(u=>`<span class="uchip${u.wc?' wc':''}">${u.wc?'♿ ':'🧑 '}${u.name}</span>`).join('');
+}
+function toggleConflict(){
+  conflOpen=!conflOpen;
+  document.getElementById('cbody').style.display=conflOpen?'block':'none';
+  document.getElementById('chev').textContent=conflOpen?'▼':'▶';
+}
+function setConflictN(n){
+  if(n<0)n=0;totalC=n;
+  document.getElementById('ccount').textContent=n+' 項';
+  document.getElementById('ccount-b').textContent=n;
+  if(n===0){
+    document.getElementById('ccount').style.background='#007B6E';
+    document.getElementById('chdr').style.background='#f0fdf4';
+    document.getElementById('chdr').style.borderBottomColor='#86efac';
+    document.getElementById('cicon').textContent='✅';
+    document.getElementById('ctitle').style.color='#166534';
+    document.getElementById('cstatus').style.color='#0F6E56';
+  } else {
+    document.getElementById('ccount').style.background='#dc2626';
+    document.getElementById('chdr').style.background='#fef2f2';
+    document.getElementById('chdr').style.borderBottomColor='#fca5a5';
+    document.getElementById('cicon').textContent='⚠️';
+    document.getElementById('ctitle').style.color='#991b1b';
+    document.getElementById('cstatus').style.color='#dc2626';
+  }
+  document.getElementById('imp-btn').disabled=false;
+}
+function autoFix(){unpool=[];renderUnassigned();setConflictN(totalC-3);}
+
+// ── DELETE ──
+let pendDel=null;
+function pDel(e,id){e.stopPropagation();pendDel=id;const c=CASES.find(x=>x.id===id);document.getElementById('del-nm').textContent=c?c.name:'此個案';document.getElementById('mo-del').classList.add('show');}
+function doDelete(){
+  if(pendDel===null)return;
+  const c=CASES.find(x=>x.id===pendDel);
+  if(c){
+    OL[`${c.car}-${c.trip}-${c.dir}`]=(OL[`${c.car}-${c.trip}-${c.dir}`]||[]).filter(id=>id!==pendDel);
+    unpool.push({id:'d'+pendDel,name:c.name,wc:c.wc});
+    CASES=CASES.filter(x=>x.id!==pendDel);
+    setConflictN(totalC+1);
+    if(!conflOpen){conflOpen=true;document.getElementById('cbody').style.display='block';document.getElementById('chev').textContent='▼';}
+    renderUnassigned();
+    document.getElementById('btn-auto').disabled=false;
+  }
+  pendDel=null;closeAll();renderList();rdMap();
+}
+
+// ── IMPORT ──
+function openImportModal(){
+  closeAll();
+  if(totalC>0){document.getElementById('warn-n').textContent=totalC;document.getElementById('mo-warn').classList.add('show');}
+  else document.getElementById('mo-ok').classList.add('show');
+}
+function openChangeLog(){document.getElementById('mo-cl').classList.add('show');}
+function closeAll(){document.querySelectorAll('.mo').forEach(m=>m.classList.remove('show'));}
+function doImport(){
+  closeAll();
+  const t=document.getElementById('toast');t.classList.add('show');
+  setTimeout(()=>{t.classList.remove('show');renderP0();showPage('transport');},1200);
+}
+
+// ── PAGES ──
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(name==='smart'){setTimeout(()=>{initMap();if(map)map.invalidateSize();renderList();},150);}
+}
+function goSmart(){showPage('smart');}
+
+document.querySelectorAll('.mo').forEach(m=>{m.addEventListener('click',function(e){if(e.target===this)closeAll();});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll();});
+
+// INIT
+renderP0();
+renderUnassigned();
+</script>
+</body>
+</html>
