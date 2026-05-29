@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能派車 v2 — 唯讀版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Noto Sans TC',sans-serif;font-size:13px;color:#1a1a1a;background:#f0f0f0}
+.page{display:none;position:absolute;inset:0;flex-direction:column;overflow:hidden}
+.page.active{display:flex}
+.teal-bar{background:#007B6E;color:#fff;padding:0 14px;height:48px;display:flex;align-items:center;gap:10px;font-size:16px;font-weight:500;flex-shrink:0}
+.teal-bar select{font-size:11px;padding:3px 6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:6px}
+.top-ic{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.top-ic:hover{background:rgba(255,255,255,.25)}
+.back-btn{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px}
+/* P0 */
+.p0-bar{background:#fff;border-bottom:1px solid #e0e0e0;padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.p0-search{flex:0 0 140px;position:relative}
+.p0-search input{width:100%;padding:6px 10px 6px 28px;border:1px solid #ccc;border-radius:6px;font-size:12px}
+.srch-ic{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#999;font-size:13px}
+.fchip{display:flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;background:#fff;cursor:pointer;color:#333;white-space:nowrap}
+.fchip:hover{background:#f5f5f5}
+.fchip svg{width:9px;height:9px}
+.btn-smart{background:none;border:1.5px solid #dc2626;color:#dc2626;padding:6px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;margin-left:auto;white-space:nowrap}
+.btn-smart:hover{background:#dc2626;color:#fff}
+.p0-col-hdr{display:flex;align-items:center;padding:6px 16px;font-size:11px;color:#888;background:#fafafa;border-bottom:1px solid #eee;flex-shrink:0}
+.p0-list{flex:1;overflow-y:auto}
+.sec-bar{background:#9e9e9e;color:#fff;padding:6px 16px;font-size:12px;font-weight:600}
+.trip-hdr{background:#f5f5f5;padding:8px 16px;font-size:12px;color:#444;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between}
+.info-btn{width:22px;height:22px;border-radius:50%;background:#e0e0e0;border:none;cursor:pointer;font-size:11px;color:#555}
+.p0-row{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid #f0f0f0;gap:8px;font-size:13px}
+.p0-row:hover{background:#fafafa}
+.ct{width:55px;color:#555;font-size:12px;flex-shrink:0}
+.cn{width:160px;font-weight:500;flex-shrink:0}
+.cf{width:80px;color:#666;font-size:12px;flex-shrink:0}
+.ca{flex:1;color:#555;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cd{width:65px;text-align:right;color:#555;font-size:12px;flex-shrink:0}
+.ck{width:80px;text-align:right;color:#666;font-size:11px;flex-shrink:0}
+.cm{width:80px;text-align:right;color:#888;font-size:11px;flex-shrink:0}
+.fab{position:absolute;bottom:20px;right:16px;width:48px;height:48px;border-radius:50%;background:#007B6E;border:none;color:#fff;font-size:28px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center}
+
+/* P1 smart */
+.smart-layout{flex:1;display:flex;min-height:0}
+.sidebar{width:220px;min-width:220px;border-right:1px solid #ddd;display:flex;flex-direction:column;background:#fff;overflow:hidden;flex-shrink:0}
+.sbar-top{padding:8px 10px;border-bottom:1px solid #ddd;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.ssel{font-size:12px;padding:5px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;flex:1;min-width:80px}
+.btn-log{background:none;border:1.5px solid #dc2626;color:#dc2626;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0}
+.btn-log:hover{background:#dc2626;color:#fff}
+/* weekday tabs */
+.day-tabs{padding:8px 10px;display:flex;gap:4px;border-bottom:1px solid #ddd;background:#fafafa}
+.dtab{flex:1;text-align:center;padding:5px 2px;font-size:11px;font-weight:500;border-radius:6px;cursor:pointer;border:1px solid #ddd;background:#fff;color:#555;transition:all .15s}
+.dtab.active{background:#007B6E;border-color:#007B6E;color:#fff}
+.dtab:hover:not(.active){background:#f0fdf9;border-color:#9fe1cb;color:#007B6E}
+/* filter bar */
+.fbar{padding:6px 10px;border-bottom:1px solid #ddd;display:flex;gap:5px;align-items:center;flex-wrap:wrap;background:#fafafa}
+.fbar label{font-size:11px;color:#666;white-space:nowrap}
+.fbar select{font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid #ccc;background:#fff;flex:1;min-width:60px}
+.car-tabs{padding:7px 10px;display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid #ddd}
+.ctab-wrap{position:relative}
+.ctab{font-size:11px;padding:4px 10px;border-radius:10px;cursor:pointer;font-weight:500;border:1px solid transparent;display:inline-block;transition:all .15s}
+.ctab-tt{display:none;position:absolute;top:calc(100% + 6px);left:0;background:#1a1a1a;color:#fff;font-size:11px;border-radius:6px;padding:7px 10px;white-space:nowrap;z-index:200;line-height:1.7;box-shadow:0 3px 10px rgba(0,0,0,.25);pointer-events:none}
+.ctab-tt::before{content:'';position:absolute;top:-5px;left:14px;border:5px solid transparent;border-bottom-color:#1a1a1a;border-top:none}
+.ctab-wrap:hover .ctab-tt{display:block}
+
+/* right panel */
+.right-panel{flex:1;display:flex;flex-direction:column;min-width:0;background:#f5f5f5;overflow:hidden}
+.rp-header{background:#fff;border-bottom:1px solid #ddd;padding:10px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.rp-title{font-size:13px;font-weight:500;color:#333}
+.rp-stat{font-size:11px;color:#888;background:#f5f5f5;padding:3px 8px;border-radius:6px}
+.rp-stat.warn{background:#fef2f2;color:#991b1b}
+.rp-stat.ok{background:#f0fdf9;color:#0f6e56}
+.rp-body{flex:1;overflow-y:auto;padding:12px 16px}
+/* car section in right panel */
+.car-section{background:#fff;border-radius:8px;overflow:hidden;margin-bottom:12px;border:1px solid #e0e0e0}
+.cs-header{padding:10px 14px;display:flex;align-items:center;gap:8px;color:#fff;font-size:12px;font-weight:600}
+.cs-trip{border-top:1px solid rgba(0,0,0,.08)}
+.cs-trip-hdr{padding:7px 14px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.04)}
+.cs-row{display:flex;align-items:center;padding:7px 14px;border-top:1px solid #f5f5f5;font-size:12px;gap:6px}
+.cs-row:hover{background:#f9f9f9}
+.cs-num{width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;color:#fff}
+.wc-chip{font-size:10px;background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:6px}
+.lock-chip{font-size:10px;background:#f0fdf9;color:#0f6e56;padding:1px 6px;border-radius:6px;border:1px solid #9fe1cb}
+
+
+
+
+
+
+
+
+
+
+/* conflict */
+.cpanel{border-top:1px solid #ddd;background:#fff;flex-shrink:0;max-height:220px;overflow-y:auto}
+.chdr{padding:8px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;background:#fef2f2;border-bottom:1px solid #fca5a5;position:sticky;top:0;z-index:2}
+.cbadge{background:#dc2626;color:#fff;font-size:10px;font-weight:600;padding:1px 7px;border-radius:8px}
+.cinner{padding:10px 14px;display:flex;flex-direction:column;gap:10px}
+.uchip{font-size:11px;padding:3px 9px;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b}
+.uchip.wc{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.orow{display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 8px;border-radius:6px;background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+.bbar{background:#fff;border-top:1px solid #ddd;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.btn-imp{background:#007B6E;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer}
+.btn-imp:disabled{background:#9ca3af;cursor:not-allowed}
+.btn-sec{background:#fff;color:#333;border:1px solid #ccc;padding:8px 14px;border-radius:6px;font-size:13px;cursor:pointer}
+.btn-auto{font-size:11px;padding:5px 12px;border-radius:6px;background:#007B6E;color:#fff;border:none;cursor:pointer;font-weight:500}
+.btn-auto:disabled{background:#9ca3af;cursor:not-allowed}
+/* modals */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s}
+.mo.show{opacity:1;pointer-events:all}
+.mdl{background:#fff;border-radius:12px;width:440px;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;overflow:hidden;border:1px solid #ddd}
+.mdl-sm{background:#fff;border-radius:12px;width:380px;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;overflow:hidden;border:1px solid #ddd}
+.cl-mdl{background:#fff;border-radius:12px;width:480px;max-height:560px;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;overflow:hidden;border:1px solid #ddd;display:flex;flex-direction:column}
+.mo.show .mdl,.mo.show .mdl-sm,.mo.show .cl-mdl{transform:scale(1)}
+.mhd{background:#f8f8f8;padding:18px 20px 16px;display:flex;gap:14px;border-bottom:1px solid #e8e8e8;align-items:flex-start}
+.mic{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px}
+.mcl{margin:14px 20px;padding:12px 14px;background:#f5f5f5;border-radius:8px;border:1px solid #e8e8e8;display:flex;flex-direction:column;gap:8px}
+.mck{display:flex;align-items:center;gap:10px;font-size:13px;color:#222}
+.mwy{margin:0 20px 14px;padding:10px 13px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#78350f;line-height:1.6}
+.mwr{margin:0 20px 14px;padding:10px 13px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.6}
+.mft{background:#f8f8f8;padding:14px 20px;border-top:1px solid #e8e8e8;display:flex;gap:8px;justify-content:flex-end}
+.mb-c{background:#fff;color:#555;border:1px solid #ccc;padding:9px 20px;border-radius:6px;font-size:13px;cursor:pointer}
+.mb-ok{background:#007B6E;color:#fff;border:none;padding:9px 26px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.mb-ok:hover{background:#005f56}
+.mb-d{background:#dc2626;color:#fff;border:none;padding:9px 26px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.mb-d:hover{background:#b91c1c}
+.cl-body{flex:1;overflow-y:auto;padding:0 0 8px}
+.cl-sec{padding:8px 16px 4px;font-size:11px;font-weight:600;color:#666;letter-spacing:.5px}
+.cl-row{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid #f5f5f5;font-size:12px}
+.cl-row:last-child{border-bottom:none}
+.cl-tag{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.cl-tag.mv{background:#dbeafe;color:#1e40af}
+.cl-tag.un{background:#fef2f2;color:#dc2626}
+.cl-tag.nw{background:#e0f7f4;color:#065f46}
+.cl-ar{color:#9ca3af;font-size:12px;flex-shrink:0}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:10000;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── 個案資訊 icon ── */
+.case-info-btn{width:22px;height:22px;border-radius:50%;border:none;cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s;line-height:1}
+.case-info-btn:hover{opacity:.75}
+.case-info-btn.inbound{background:#3b82f6;color:#fff}
+.case-info-btn.outbound{background:#f97316;color:#fff}
+/* NEW badge */
+.new-badge-case{font-size:9px;padding:1px 5px;border-radius:6px;background:#dc2626;color:#fff;font-weight:600;vertical-align:middle;margin-left:3px;flex-shrink:0}
+/* 超載 toast */
+.overload-toast{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-8px);background:#dc2626;color:#fff;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:all .25s;z-index:10001;white-space:nowrap;box-shadow:0 4px 12px rgba(220,38,38,.35)}
+.overload-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* 個案資訊彈窗 */
+.ci-modal{background:#fff;border-radius:12px;width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.28);transform:scale(.95);transition:transform .2s;border:1px solid #ddd}
+.mo.show .ci-modal{transform:scale(1)}
+.ci-head{padding:16px 20px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px}
+.ci-dir-badge{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:600;color:#fff}
+.ci-dir-badge.inbound{background:#3b82f6}
+.ci-dir-badge.outbound{background:#f97316}
+.ci-name{font-size:15px;font-weight:700;color:#111}
+.ci-new{font-size:10px;padding:2px 7px;border-radius:6px;background:#dc2626;color:#fff;font-weight:600}
+.ci-body{padding:0}
+.ci-row{display:flex;align-items:flex-start;padding:11px 20px;border-bottom:1px solid #f5f5f5;gap:14px}
+.ci-row:last-child{border-bottom:none}
+.ci-lbl{width:140px;min-width:140px;font-size:12px;color:#555;padding-top:8px;line-height:1.5;flex-shrink:0}
+.ci-lbl small{font-size:10px;color:#aaa;display:block;margin-top:1px}
+.ci-val{flex:1}
+.ci-input{width:100%;padding:7px 10px;border:none;border-bottom:1px solid #ddd;font-size:13px;background:transparent;outline:none;color:#1a1a1a}
+.ci-input:focus{border-bottom-color:#007B6E}
+.ci-sel{width:100%;padding:7px 10px;border:none;border-bottom:1px solid #ddd;font-size:13px;background:transparent;outline:none;color:#1a1a1a;cursor:pointer;appearance:none;-webkit-appearance:none}
+.ci-sel:focus{border-bottom-color:#007B6E}
+.ci-dc{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.ci-dp{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #ccc;background:#f5f5f5;color:#666;user-select:none;transition:all .15s}
+.ci-dp.s{background:#007B6E;border-color:#007B6E;color:#fff}
+.ci-dp:hover:not(.s){background:#e0f7f4;border-color:#9FE1CB}
+.ci-freq-txt{font-size:12px;color:#333;margin-bottom:5px}
+.ci-num-row{display:flex;align-items:center;gap:8px;padding-top:4px}
+.ci-nbtn{width:28px;height:28px;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.ci-nbtn:hover{background:#e0f7f4;border-color:#9FE1CB}
+.ci-ninput{width:60px;padding:5px 8px;border:none;border-bottom:1px solid #ddd;font-size:13px;text-align:center;background:transparent;outline:none}
+.ci-tbtn-grp{display:flex;gap:6px;padding-top:4px}
+.ci-tbtn{padding:6px 16px;border-radius:6px;border:1px solid #ccc;font-size:12px;background:#fff;color:#666;cursor:pointer;transition:all .15s}
+.ci-tbtn.on{background:#e0f7f4;border-color:#9FE1CB;color:#085041}
+.ci-tbtn.on::before{content:'✓ ';font-size:11px}
+.ci-foot{padding:14px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end;background:#f8f8f8}
+.ci-btn-cancel{background:#fff;color:#555;border:1px solid #ccc;padding:8px 18px;border-radius:6px;font-size:13px;cursor:pointer}
+.ci-btn-ok{background:#007B6E;color:#fff;border:none;padding:8px 22px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer}
+.ci-btn-ok:hover{background:#005f56}
+.readonly-note{font-size:11px;color:#888;padding:6px 20px 10px;background:#fafafa;border-bottom:1px solid #f0f0f0}
+
+/* ── 待設定個案區塊 ── */
+.pending-panel{border-top:1px solid #e8e8e8;flex-shrink:0;background:#fff;max-height:260px;display:flex;flex-direction:column}
+.pending-hdr{padding:7px 10px;font-size:11px;font-weight:600;color:#dc2626;background:#fef2f2;border-bottom:1px solid #fca5a5;display:flex;align-items:center;gap:6px;cursor:pointer;flex-shrink:0}
+.pending-hdr .p-badge{background:#dc2626;color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px}
+.pending-hdr .p-chev{margin-left:auto;font-size:11px;color:#991b1b}
+.pending-list{overflow-y:auto;flex:1}
+.pending-item{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid #f5f5f5;font-size:12px}
+.pending-item:last-child{border-bottom:none}
+.pending-item:hover{background:#fef9f9}
+.pending-name{flex:1;font-weight:500;color:#1a1a1a}
+.pending-hint{font-size:10px;color:#888}
+
+/* ── 搜尋列 ── */
+.search-bar{padding:6px 10px;border-bottom:1px solid #ddd;background:#fff;display:flex;align-items:center;gap:6px}
+.search-bar input{flex:1;padding:6px 10px 6px 28px;border:1px solid #ddd;border-radius:6px;font-size:12px;outline:none;background:#f9f9f9}
+.search-bar input:focus{border-color:#007B6E;background:#fff}
+.search-wrap{position:relative;flex:1}
+.search-wrap::before{content:'🔍';position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;pointer-events:none}
+.search-clear{background:none;border:none;cursor:pointer;color:#aaa;font-size:14px;padding:0 2px;line-height:1;display:none}
+.search-clear.show{display:block}
+</style>
+</head>
+<body>
+
+<!-- PAGE 0 -->
+<div id="pg0" class="page active">
+  <div class="teal-bar">
+    <span>交通安排</span>
+    <div style="flex:1"></div>
+    <button class="top-ic">⚙</button>
+    <button class="top-ic">ℹ</button>
+    <button class="top-ic">🖨</button>
+  </div>
+  <div class="p0-bar">
+    <div class="p0-search"><span class="srch-ic">🔍</span><input placeholder="搜尋"></div>
+    <div class="fchip">服務中<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg></div>
+    <div class="fchip">全部方向<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg></div>
+    <div class="fchip">全部安排<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg></div>
+    <div class="fchip">全車輛/路線<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg></div>
+    <button class="btn-smart" onclick="goSmart()">智能派車</button>
+  </div>
+  <div class="p0-col-hdr">
+    <span class="ct">預計</span><span class="cn">姓名</span><span class="cf">頻率</span>
+    <span class="ca">地址</span><span class="cd">乘車時長</span><span class="ck">輔具</span><span class="cm">備註</span>
+  </div>
+  <div class="p0-list" id="p0-list"></div>
+  <button class="fab">＋</button>
+</div>
+
+<!-- PAGE 1 智能派車 -->
+<div id="pg1" class="page">
+  <div class="teal-bar">
+    <button class="back-btn" onclick="showPage('pg0')">←</button>
+    <span>智能派車</span>
+    <div style="flex:1"></div>
+    <div style="font-size:11px;background:rgba(255,255,255,.15);padding:3px 10px;border-radius:20px">v2 唯讀版</div>
+  </div>
+
+  <div class="smart-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sbar-top">
+        <select class="ssel" id="car-sel" onchange="setCarF(this.value)">
+          <option value="all">全部車輛</option>
+          <option value="A">甲車</option><option value="B">乙車</option><option value="C">丙車</option>
+        </select>
+        <select class="ssel" id="trip-sel" onchange="setTripF(this.value)">
+          <option value="all">全趟次</option>
+          <option value="1">第1趟</option><option value="2">第2趟</option><option value="3">第3趟</option>
+        </select>
+        <button class="btn-log" onclick="openCL()">異動紀錄</button>
+      </div>
+      <!-- 搜尋列 -->
+      <div class="search-bar">
+        <div class="search-wrap">
+          <input type="text" id="case-search" placeholder="搜尋個案姓名…" oninput="onSearch(this.value)">
+        </div>
+        <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+      </div>
+  <!-- weekday tabs -->
+      <div class="day-tabs" id="day-tabs">
+        <div class="dtab active" onclick="setDay('一',this)">一</div>
+        <div class="dtab" onclick="setDay('二',this)">二</div>
+        <div class="dtab" onclick="setDay('三',this)">三</div>
+        <div class="dtab" onclick="setDay('四',this)">四</div>
+        <div class="dtab" onclick="setDay('五',this)">五</div>
+        <div class="dtab" onclick="setDay('六',this)">六</div>
+        <div class="dtab" onclick="setDay('日',this)">日</div>
+      </div>
+      <div class="fbar">
+        <label>方向：</label>
+        <select id="dir-sel" onchange="setDirF(this.value)">
+          <option value="all" selected>全部</option>
+          <option value="inbound">來程</option>
+          <option value="outbound">回程</option>
+        </select>
+      </div>
+      <div class="car-tabs">
+        <div class="ctab-wrap"><span class="ctab" id="tab-all" style="background:#f0fdf4;color:#0f6e56;border-color:#9fe1cb" onclick="setCarF('all');document.getElementById('car-sel').value='all'">全部</span></div>
+        <div class="ctab-wrap">
+          <span class="ctab" id="tab-A" style="background:#f5f5f5;color:#555;border-color:#ddd" onclick="setCarF('A');document.getElementById('car-sel').value='A'">甲車</span>
+          <div class="ctab-tt"><div>👤 吳山</div><div>🚗 ABC-1234</div><div>👥 3人 / ♿1台</div></div>
+        </div>
+        <div class="ctab-wrap">
+          <span class="ctab" id="tab-B" style="background:#f5f5f5;color:#555;border-color:#ddd" onclick="setCarF('B');document.getElementById('car-sel').value='B'">乙車</span>
+          <div class="ctab-tt"><div>👤 Lewis Hamilton</div><div>🚗 DEF-5678</div><div>👥 8人 / ♿3台</div></div>
+        </div>
+        <div class="ctab-wrap">
+          <span class="ctab" id="tab-C" style="background:#f5f5f5;color:#555;border-color:#ddd" onclick="setCarF('C');document.getElementById('car-sel').value='C'">丙車</span>
+          <div class="ctab-tt"><div>👤 George Russell</div><div>🚗 GHI-9012</div><div>👥 3人 / ♿0台</div></div>
+        </div>
+      </div>
+
+      <!-- 待設定個案 -->
+      <div class="pending-panel" id="pending-panel">
+        <div class="pending-hdr" onclick="togglePending()">
+          <span>⏳ 待設定接送資訊</span>
+          <span class="p-badge" id="pending-badge">2</span>
+          <span class="p-chev" id="pending-chev">▲</span>
+        </div>
+        <div class="pending-list" id="pending-list"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL (no map) -->
+    <div class="right-panel">
+      <div class="rp-header">
+        <span class="rp-title" id="rp-day-title">週一 · 全部車輛</span>
+        <span class="rp-stat" id="rp-total">24 位個案</span>
+        <span class="rp-stat warn" id="rp-conflict">⚠ 5 項異常</span>
+      </div>
+      <div class="rp-body" id="rp-body"></div>
+    </div>
+  </div>
+
+  <!-- 派車異常提示 -->
+  <div class="cpanel">
+    <div class="chdr" onclick="toggleC()" id="chdr">
+      <div style="display:flex;align-items:center;gap:7px;flex:1">
+        <span id="cicon">⚠️</span>
+        <span style="font-size:12px;font-weight:500;color:#991b1b" id="ctitle">派車異常提示</span>
+        <span class="cbadge" id="ccount">3 項</span>
+      </div>
+      <span id="chev">▼</span>
+    </div>
+    <div id="cbody">
+      <div class="cinner">
+        <div id="u-sec">
+          <div style="font-size:11px;font-weight:500;color:#666;margin-bottom:6px">🔴 未排入車輛的個案（<span id="u-cnt">3</span> 位）</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px" id="u-chips"></div>
+        </div>
+
+      </div>
+      <div style="padding:8px 14px 10px;border-top:1px solid #eee;display:flex;align-items:center;gap:8px">
+        <button class="btn-auto" id="btn-auto" onclick="autoFix()">⚡ 自動分配未排入個案</button>
+        <span style="font-size:11px;color:#888">· 唯讀版僅供檢視，不會匯入系統</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bbar">
+    <div style="font-size:12px;color:#666;display:flex;gap:12px">
+      <span>🚌 <strong>3</strong> 輛車</span>
+      <span>👥 <strong id="total-c">24</strong> 位個案</span>
+      <span id="cstatus" style="color:#dc2626">⚠️ <strong id="ccount-b">3</strong> 項異常</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sec" onclick="resetSmartPage()">↺ 重新規劃</button>
+    </div>
+  </div>
+</div>
+
+<!-- 刪除確認 -->
+<div class="mo" id="mo-del">
+  <div class="mdl-sm">
+    <div class="mhd"><div class="mic" style="background:#fef2f2;font-size:18px">🗑️</div>
+      <div><div style="font-size:15px;font-weight:700;color:#991b1b;margin-bottom:5px">移除個案</div>
+      <div style="font-size:13px;color:#555;line-height:1.6">確定要將「<span id="del-nm" style="font-weight:600;color:#111"></span>」從此趟次移除嗎？</div></div>
+    </div>
+    <div style="margin:0 20px 16px;padding:10px 13px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;color:#991b1b;line-height:1.6">
+      移除後此個案將進入「未排入」狀態，可重新拖曳分配或使用自動分配。
+    </div>
+    <div class="mft"><button class="mb-c" onclick="closeAll()">取消</button><button class="mb-d" onclick="doDel()">確定移除</button></div>
+  </div>
+</div>
+
+<!-- 異動紀錄 -->
+<div class="mo" id="mo-cl">
+  <div class="cl-mdl">
+    <div class="mhd" style="flex-shrink:0">
+      <div class="mic" style="background:#f0fdf4;font-size:18px">📋</div>
+      <div style="flex:1"><div style="font-size:15px;font-weight:700;color:#111;margin-bottom:3px">本次派車異動紀錄</div>
+      <div style="font-size:11px;color:#888">相較於上次儲存的交通安排，本次的異動如下</div></div>
+      <button onclick="closeAll()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#888">✕</button>
+    </div>
+    <div class="cl-body">
+      <div class="cl-sec">車輛異動</div>
+      <div class="cl-row"><span class="cl-tag mv">換車</span><span style="flex:1;font-weight:500">王美華</span><span style="color:#888;font-size:11px">乙車 第1趟</span><span class="cl-ar">→</span><span style="color:#007B6E;font-size:11px;font-weight:500">甲車 第1趟</span></div>
+      <div class="cl-row"><span class="cl-tag mv">換車</span><span style="flex:1;font-weight:500">陳大明</span><span style="color:#888;font-size:11px">乙車 第1趟</span><span class="cl-ar">→</span><span style="color:#007B6E;font-size:11px;font-weight:500">甲車 第1趟</span></div>
+      <div class="cl-sec" style="margin-top:4px">無車可搭乘</div>
+      <div class="cl-row"><span class="cl-tag un">未排入</span><span style="flex:1;font-weight:500">李建志</span><span style="color:#888;font-size:11px">乙車 第1趟</span><span class="cl-ar">→</span><span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span></div>
+      <div class="cl-row"><span class="cl-tag un">未排入</span><span style="flex:1;font-weight:500">陳秀梅 ♿</span><span style="color:#888;font-size:11px">甲車 第3趟</span><span class="cl-ar">→</span><span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span></div>
+      <div class="cl-row"><span class="cl-tag un">未排入</span><span style="flex:1;font-weight:500">黃大海</span><span style="color:#888;font-size:11px">乙車 第1趟</span><span class="cl-ar">→</span><span style="color:#dc2626;font-size:11px;font-weight:500">無車可搭乘</span></div>
+      <div class="cl-sec" style="margin-top:4px">新加入個案</div>
+      <div class="cl-row"><span class="cl-tag nw">新增</span><span style="flex:1;font-weight:500">龔志明</span><span style="color:#888;font-size:11px">—</span><span class="cl-ar">→</span><span style="color:#007B6E;font-size:11px;font-weight:500">丙車 第3趟</span></div>
+    </div>
+    <div class="mft" style="flex-shrink:0"><button class="mb-c" onclick="closeAll()">關閉</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ 匯入成功！正在更新交通安排…</div>
+
+<script>
+const CC={A:'#1D9E75',B:'#378ADD',C:'#BA7517'};
+const CN={A:'甲車',B:'乙車',C:'丙車'};
+const DR={A:'吳山',B:'Lewis Hamilton',C:'George Russell'};
+const TT={1:'07:00',2:'07:30',3:'08:00'};
+const DAYS_LABEL=['一','二','三','四','五','六','日'];
+// 車輛人數上限
+const CAR_LIMIT={A:3,B:8,C:3};
+
+/* ── DATA MODEL ──
+   ORDER[day][car][trip][dir] = [id,...]
+   CMAP[day][id] = case object
+   CASE_INFO[id][dir] = {freq,car,dur,dist,arrive,accompany,accNum}  ← 個案資訊彈窗的資料
+*/
+const BASE=[
+  {id:1, name:'王美華', car:'A',trip:1,wc:false,dir:'inbound', addr:'新北市新店區北新路三段65巷4號',freq:'一到五',dur:'2',aid:'無需輔具',note:'2',locked:false,isNew:false},
+  {id:2, name:'陳大明', car:'A',trip:1,wc:false,dir:'inbound', addr:'新北市新店區環河路20號',      freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:3, name:'林小芬', car:'A',trip:1,wc:false,dir:'inbound', addr:'新北市新店區中正路88號',      freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:4, name:'黃阿嬤', car:'A',trip:2,wc:false,dir:'inbound', addr:'新北市新店區寶橋路235巷',    freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:5, name:'吳老伯', car:'A',trip:2,wc:false,dir:'inbound', addr:'新北市新店區民族路22號',      freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:6, name:'周天賜', car:'A',trip:2,wc:false,dir:'inbound', addr:'新北市新店區安和路一段128號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:7, name:'蔡玉英', car:'A',trip:3,wc:false,dir:'inbound', addr:'新北市新店區文中路45號',      freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:8, name:'李春花', car:'A',trip:3,wc:true, dir:'inbound', addr:'新北市新店區建國路76號',      freq:'一到五',dur:'—',aid:'輪椅',    note:'—',locked:false,isNew:false},
+  {id:10,name:'趙月娥', car:'A',trip:3,wc:false,dir:'inbound', addr:'新北市新店區復興路二段31號',  freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:9, name:'張慢玉', car:'B',trip:1,wc:true, dir:'inbound', addr:'台北市大安區信義路四段280號',freq:'一到五',dur:'20',aid:'輪椅',   note:'—',locked:true, isNew:false},
+  {id:11,name:'鄭嘉豪', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市大安區敦化南路二段90號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:12,name:'許麗珍', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市大安區仁愛路四段122號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:13,name:'曾阿發', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市中正區羅斯福路三段100號',freq:'一到三',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:14,name:'葉明珠', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市中正區汀州路三段155號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:15,name:'洪水旺', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市萬華區西藏路200號',     freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:16,name:'謝秀蘭', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市中山區民生東路二段147號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:17,name:'廖進財', car:'B',trip:1,wc:false,dir:'inbound', addr:'台北市松山區南京東路五段100號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:18,name:'施仁義', car:'C',trip:1,wc:false,dir:'inbound', addr:'台北市中山區松江路101號',     freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:19,name:'江雅惠', car:'C',trip:1,wc:false,dir:'inbound', addr:'台北市中山區建國北路一段22號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:20,name:'沈家豪', car:'C',trip:1,wc:false,dir:'inbound', addr:'台北市中山區長安東路一段78號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:21,name:'方淑芬', car:'C',trip:2,wc:false,dir:'inbound', addr:'台北市士林區中正路238號',     freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:22,name:'唐義雄', car:'C',trip:2,wc:false,dir:'inbound', addr:'台北市士林區文林路600號',     freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:23,name:'韓美玲', car:'C',trip:2,wc:false,dir:'inbound', addr:'台北市士林區天母東路88號',    freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:24,name:'龔志明', car:'C',trip:3,wc:false,dir:'inbound', addr:'台北市內湖區內湖路一段388號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  // outbound
+  {id:101,name:'王美華',car:'A',trip:1,wc:false,dir:'outbound',addr:'新北市新店區北新路三段65巷4號',freq:'一到五',dur:'2',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:102,name:'陳大明',car:'A',trip:1,wc:false,dir:'outbound',addr:'新北市新店區環河路20號',      freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  {id:103,name:'張慢玉',car:'B',trip:1,wc:true, dir:'outbound',addr:'台北市大安區信義路四段280號',freq:'一到五',dur:'20',aid:'輪椅',   note:'—',locked:true, isNew:false},
+  {id:104,name:'施仁義',car:'C',trip:1,wc:false,dir:'outbound',addr:'台北市中山區松江路101號',     freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:false},
+  // NEW 個案（照顧計畫匯入勾選「是」）
+  {id:201,name:'陳建宏',car:null,trip:null,wc:false,dir:'inbound', addr:'新北市板橋區文化路一段188號',freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:true},
+  {id:202,name:'林秀惠',car:null,trip:null,wc:false,dir:'inbound', addr:'台北市信義區松仁路100號',    freq:'一到五',dur:'—',aid:'無需輔具',note:'—',locked:false,isNew:true},
+];
+const SKIP_SAT=[13];
+const SKIP_SUN=[4,5,6,13,22,23];
+
+const ORDER={};
+const CMAP={};
+
+// 個案資訊彈窗存儲（per id per dir）
+const CASE_INFO={};
+function initCaseInfo(id, dir, c){
+  const key=`${id}-${dir}`;
+  if(!CASE_INFO[key]){
+    CASE_INFO[key]={
+      freq: c.isNew ? [] : ['一','二','三','四','五'],
+      car: c.car||'',
+      dur: c.dur==='—'?'':c.dur,
+      dist: 0,
+      arrive: dir==='inbound'?'07:30':'16:30',
+      accompany: false,
+      accNum: 1,
+    };
+  }
+  return CASE_INFO[key];
+}
+
+// Parse freq string like '一到五' or '一、二、三、四' → array of days
+const ALL_DAYS=['一','二','三','四','五','六','日'];
+function parseFreqStr(str){
+  if(!str||str==='—') return ALL_DAYS.slice();
+  if(str.indexOf('到')!==-1){
+    const p=str.split('到');
+    const s=ALL_DAYS.indexOf(p[0].trim()),e=ALL_DAYS.indexOf(p[1].trim());
+    if(s!==-1&&e!==-1) return ALL_DAYS.slice(s,e+1);
+  }
+  return ALL_DAYS.filter(d=>str.indexOf(d)!==-1);
+}
+// Check if a case should appear on a given day (based on CASE_INFO freq if available, else BASE freq)
+function caseAppearsOnDay(id, dir, day, baseCase){
+  const key=`${id}-${dir}`;
+  let freqDays;
+  if(CASE_INFO[key]){
+    // CASE_INFO.freq is already an array
+    freqDays = CASE_INFO[key].freq;
+    if(!freqDays||!freqDays.length) freqDays=parseFreqStr(baseCase.freq);
+  } else {
+    freqDays = parseFreqStr(baseCase.freq);
+  }
+  return freqDays.includes(day);
+}
+
+function buildDay(day){
+  // Always rebuild (don't cache) so freq filter is live
+  let cases = JSON.parse(JSON.stringify(BASE));
+  CMAP[day]={};
+  ORDER[day]={A:{},B:{},C:{}};
+  ['A','B','C'].forEach(car=>{ [1,2,3].forEach(t=>{ ORDER[day][car][t]={}; ['inbound','outbound'].forEach(dir=>{ ORDER[day][car][t][dir]=[]; }); }); });
+  cases.forEach(c=>{
+    initCaseInfo(c.id, c.dir, c);
+    if(!c.car||c.trip==null) return; // NEW case not yet assigned to a vehicle
+    if(!caseAppearsOnDay(c.id, c.dir, day, c)) return;
+    CMAP[day][c.id]=c;
+    ORDER[day][c.car][c.trip][c.dir].push(c.id);
+  });
+}
+
+function getList(day,car,trip,dir){ buildDay(day); return (ORDER[day][car]&&ORDER[day][car][trip]&&ORDER[day][car][trip][dir])||[]; }
+function getCase(day,id){ buildDay(day); return CMAP[day][id]; }
+
+// Count total cases in a car+trip (both dirs)
+function countCarTrip(day,car,trip){
+  buildDay(day);
+  return (['inbound','outbound'].reduce((s,d)=>s+(getList(day,car,trip,d).length),0));
+}
+
+function moveCase(day, id, toCar, toTrip, toDir, targetId, insertAfter){
+  buildDay(day);
+  const c = CMAP[day][id];
+  if(!c||c.locked) return false;
+  // check overload BEFORE moving
+  const currentCount = countCarTrip(day, toCar, toTrip);
+  const isSameSlot = (c.car===toCar && c.trip===toTrip);
+  if(!isSameSlot && currentCount >= (CAR_LIMIT[toCar]||99)){
+    showOverloadToast();
+    return false;
+  }
+  const src = ORDER[day][c.car][c.trip][c.dir];
+  const srcIdx = src.indexOf(id);
+  if(srcIdx===-1) return false;
+  src.splice(srcIdx,1);
+  c.car=toCar; c.trip=toTrip; c.dir=toDir;
+  const dst = ORDER[day][toCar][toTrip][toDir];
+  if(!dst){ ORDER[day][toCar][toTrip][toDir]=[id]; }
+  else {
+    const tgtIdx = targetId!=null ? dst.indexOf(targetId) : -1;
+    if(tgtIdx===-1) dst.push(id);
+    else dst.splice(insertAfter ? tgtIdx+1 : tgtIdx, 0, id);
+  }
+  return true;
+}
+
+function removeCase(day, id){
+  buildDay(day);
+  const c = CMAP[day][id];
+  if(!c) return;
+  const arr = ORDER[day][c.car][c.trip][c.dir];
+  const i = arr.indexOf(id);
+  if(i!==-1) arr.splice(i,1);
+  delete CMAP[day][id];
+}
+
+// ── UI STATE ──
+let curDay='一', fCar='all', fTrip='all', fDir='all';
+let totalC=3, conflOpen=true, dSrc=null, dSrcInfo=null, pendDel=null;
+let curCiId=null, curCiDir=null;
+let unpool=[{id:'u1',name:'李建志',wc:false},{id:'u2',name:'陳秀梅',wc:true},{id:'u3',name:'黃大海',wc:false}];
+const TS={all:{bg:'#f0fdf4',col:'#0f6e56',bc:'#9fe1cb'},A:{bg:'#e0f7f4',col:'#0f6e56',bc:'#9fe1cb'},B:{bg:'#dbeafe',col:'#1e40af',bc:'#93c5fd'},C:{bg:'#fef3c7',col:'#92400e',bc:'#fcd34d'}};
+
+function updateTitle(){
+  const el=document.getElementById('rp-day-title');
+  if(el) el.textContent=`週${curDay} · ${fCar==='all'?'全部車輛':CN[fCar]}`;
+}
+function setDay(d,el){ curDay=d; document.querySelectorAll('.dtab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderRightPanel(); updateTitle(); }
+function setCarF(v){
+  fCar=v;
+  ['all','A','B','C'].forEach(k=>{ const e=document.getElementById(`tab-${k}`);if(!e)return; if(k===v){const s=TS[k];e.style.background=s.bg;e.style.color=s.col;e.style.borderColor=s.bc;} else{e.style.background='#f5f5f5';e.style.color='#555';e.style.borderColor='#ddd';} });
+  renderRightPanel(); updateTitle();
+}
+function setTripF(v){ fTrip=v; renderRightPanel(); }
+function setDirF(v){ fDir=v; renderRightPanel(); }
+function renderList(){ renderRightPanel(); }
+
+// ── OVERLOAD TOAST ──
+let _overloadTimer=null;
+function showOverloadToast(){
+  const t=document.getElementById('overload-toast');
+  t.classList.add('show');
+  clearTimeout(_overloadTimer);
+  _overloadTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+
+// ── PENDING PANEL ──
+let pendingOpen=true;
+function togglePending(){
+  pendingOpen=!pendingOpen;
+  document.getElementById('pending-list').style.display=pendingOpen?'block':'none';
+  document.getElementById('pending-chev').textContent=pendingOpen?'▲':'▼';
+}
+function isConfigured(id){
+  // A case is configured if at least one direction has freq set with ≥1 day
+  const kin=`${id}-inbound`, kout=`${id}-outbound`;
+  const inOk = CASE_INFO[kin] && CASE_INFO[kin].freq && CASE_INFO[kin].freq.length>0;
+  const outOk= CASE_INFO[kout]&& CASE_INFO[kout].freq&& CASE_INFO[kout].freq.length>0;
+  return inOk||outOk;
+}
+function renderPending(){
+  // Find all NEW cases that are not yet configured
+  const pending = BASE.filter(c=>c.isNew && !isConfigured(c.id) && (!searchQ||c.name.toLowerCase().includes(searchQ)));
+  // dedupe by id (BASE may have same id for inbound+outbound)
+  const seen=new Set(), unique=[];
+  pending.forEach(c=>{ if(!seen.has(c.id)){seen.add(c.id);unique.push(c);} });
+
+  const badge=document.getElementById('pending-badge');
+  const panel=document.getElementById('pending-panel');
+  const list=document.getElementById('pending-list');
+  if(!badge||!list) return;
+
+  if(!unique.length){
+    panel.style.display='none';
+    return;
+  }
+  panel.style.display='flex';
+  badge.textContent=unique.length;
+
+  list.innerHTML=unique.map(c=>`
+    <div class="pending-item">
+      <span class="pending-name">${c.name}</span>
+      <span class="new-badge-case">NEW</span>
+      <span class="pending-hint">未設定</span>
+      <button class="case-info-btn inbound" title="設定來程" onclick="openCaseInfo(event,${c.id},'inbound')" style="margin-left:4px">來</button>
+      <button class="case-info-btn outbound" title="設定回程" onclick="openCaseInfo(event,${c.id},'outbound')">回</button>
+    </div>
+  `).join('');
+}
+
+
+// ── SEARCH ──
+let searchQ='';
+function onSearch(v){
+  searchQ=v.trim().toLowerCase();
+  const btn=document.getElementById('search-clear');
+  if(btn) btn.className='search-clear'+(searchQ?' show':'');
+  renderRightPanel();
+  renderPending();
+}
+function clearSearch(){
+  searchQ='';
+  const inp=document.getElementById('case-search');
+  if(inp) inp.value='';
+  const btn=document.getElementById('search-clear');
+  if(btn) btn.className='search-clear';
+  renderRightPanel();
+  renderPending();
+}
+// ── RENDER RIGHT PANEL ──
+function renderRightPanel(){
+  buildDay(curDay);
+  const el=document.getElementById('rp-body');
+  const cars=fCar==='all'?['A','B','C']:[fCar];
+  const trips=fTrip==='all'?[1,2,3]:[parseInt(fTrip)];
+  const dirs=fDir==='all'?['inbound','outbound']:[fDir];
+  const DL={inbound:'來程',outbound:'回程'};
+  let h='', tot=0;
+  cars.forEach(car=>{
+    const col=CC[car];
+    let csH='', hasAny=false;
+    dirs.forEach(dir=>{trips.forEach(t=>{
+      const ids=getList(curDay,car,t,dir);
+      if(!ids.length) return;
+      hasAny=true; tot+=ids.length;
+      const tBg=dir==='inbound'?`${col}18`:'rgba(107,114,128,.1)';
+      const tCol=dir==='inbound'?col:'#555';
+      csH+=`<div class="cs-trip">
+        <div class="cs-trip-hdr" style="background:${tBg};color:${tCol}">
+          ${DL[dir]} 第${t}趟 ${TT[t]} &nbsp;·&nbsp; ${ids.length} 人
+        </div>`;
+      const filteredIds = searchQ
+        ? ids.filter(id=>{ const c=getCase(curDay,id)||BASE.find(b=>b.id===id); return c&&c.name.toLowerCase().includes(searchQ); })
+        : ids;
+      if(!filteredIds.length) return;
+      filteredIds.forEach((id,i)=>{
+        const c=getCase(curDay,id); if(!c) return;
+        const newBadge=c.isNew?`<span class="new-badge-case">NEW</span>`:'';
+        // 來程icon(🔵) & 回程icon(🟠) — always show both, highlight current dir
+        const inBtn=`<button class="case-info-btn inbound" title="來程資訊" onclick="openCaseInfo(event,${id},'inbound')">來</button>`;
+        const outBtn=`<button class="case-info-btn outbound" title="回程資訊" onclick="openCaseInfo(event,${id},'outbound')">回</button>`;
+        csH+=`<div class="cs-row${c.locked?'':' draggable-row'}"
+          ${c.locked?'':'draggable="true"'}
+          data-id="${id}" data-car="${car}" data-trip="${t}" data-dir="${dir}"
+          style="cursor:${c.locked?'default':'grab'}">
+          <span style="color:#ccc;font-size:15px;margin-right:2px;user-select:none">${c.locked?'':'⠿'}</span>
+          <div class="cs-num" style="background:${col}">${i+1}</div>
+          <span style="flex:1;font-size:12px">${c.name}${newBadge}</span>
+          ${c.wc?'<span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:6px;flex-shrink:0">♿</span>':''}
+          ${c.locked?'<span style="font-size:10px;background:#f0fdf9;color:#0f6e56;padding:1px 6px;border-radius:6px;border:1px solid #9fe1cb;flex-shrink:0">🔒 指定</span>':''}
+          <span style="font-size:10px;color:#999;margin:0 4px">0${6+t}:${String(i*9).padStart(2,'0')}</span>
+          ${inBtn}${outBtn}
+          ${c.locked?'':`<button style="background:none;border:none;cursor:pointer;color:#d1d5db;font-size:13px;padding:0 2px;line-height:1;margin-left:2px;flex-shrink:0" onmouseenter="this.style.color='#dc2626'" onmouseleave="this.style.color='#d1d5db'" onclick="pDel(event,${id})">🗑</button>`}
+        </div>`;
+      });
+      csH+='</div>';
+    });});
+    if(hasAny){
+      h+=`<div class="car-section">
+        <div class="cs-header" style="background:${col}">
+          <span>🚌 ${CN[car]}</span>
+          <span style="font-size:11px;opacity:.85;font-weight:400">· ${DR[car]}</span>
+        </div>${csH}</div>`;
+    }
+  });
+  if(!h) h='<div style="padding:24px;text-align:center;color:#aaa;font-size:12px">目前篩選條件無資料</div>';
+  el.innerHTML=h;
+  const rpTotal=document.getElementById('rp-total');
+  const totalEl=document.getElementById('total-c');
+  if(rpTotal) rpTotal.textContent=tot+' 位個案';
+  if(totalEl) totalEl.textContent=tot;
+  atkDrag();
+}
+
+// ── DRAG & DROP with overload check ──
+function atkDrag(){
+  document.querySelectorAll('.draggable-row').forEach(row=>{
+    row.addEventListener('dragstart',e=>{
+      dSrc=parseInt(row.dataset.id);
+      dSrcInfo={car:row.dataset.car, trip:parseInt(row.dataset.trip), dir:row.dataset.dir};
+      row.style.opacity='.4';
+      e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',()=>{
+      row.style.opacity='';
+      document.querySelectorAll('.draggable-row').forEach(r=>{r.style.borderTop='';r.style.borderBottom='';});
+      dSrc=null; dSrcInfo=null;
+    });
+    row.addEventListener('dragover',e=>{
+      e.preventDefault();
+      if(dSrc==null) return;
+      const srcC=getCase(curDay,dSrc);
+      if(!srcC||srcC.locked) return;
+      if(dSrcInfo.dir !== row.dataset.dir) return;
+      // pre-check overload for visual feedback
+      const tgtCar=row.dataset.car;
+      const tgtTrip=parseInt(row.dataset.trip);
+      const isSame=(srcC.car===tgtCar && srcC.trip===tgtTrip);
+      if(!isSame && countCarTrip(curDay,tgtCar,tgtTrip) >= (CAR_LIMIT[tgtCar]||99)){
+        // don't show border indicator
+        document.querySelectorAll('.draggable-row').forEach(r=>{r.style.borderTop='';r.style.borderBottom='';});
+        return;
+      }
+      document.querySelectorAll('.draggable-row').forEach(r=>{r.style.borderTop='';r.style.borderBottom='';});
+      const r=row.getBoundingClientRect();
+      if(e.clientY < r.top+r.height/2) row.style.borderTop='2.5px solid #007B6E';
+      else row.style.borderBottom='2.5px solid #007B6E';
+    });
+    row.addEventListener('dragleave',()=>{row.style.borderTop='';row.style.borderBottom='';});
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(dSrc==null) return;
+      const srcId=dSrc;
+      const tgtId=parseInt(row.dataset.id);
+      if(srcId===tgtId){ row.style.borderTop='';row.style.borderBottom='';return; }
+      const srcC=getCase(curDay,srcId);
+      if(!srcC||srcC.locked) return;
+      if(dSrcInfo.dir !== row.dataset.dir) return;
+      const tgtCar=row.dataset.car;
+      const tgtTrip=parseInt(row.dataset.trip);
+      const tgtDir=row.dataset.dir;
+      const r=row.getBoundingClientRect();
+      const after=e.clientY>=(r.top+r.height/2);
+      const ok=moveCase(curDay, srcId, tgtCar, tgtTrip, tgtDir, tgtId, after);
+      row.style.borderTop='';row.style.borderBottom='';
+      if(ok) renderRightPanel();
+    });
+  });
+}
+
+// ── CASE INFO MODAL ──
+function openCaseInfo(e, id, dir){
+  e.stopPropagation();
+  curCiId=id; curCiDir=dir;
+  // getCase may return null for NEW unassigned cases — fallback to BASE
+  const c=getCase(curDay,id) || BASE.find(b=>b.id===id);
+  if(!c) return;
+  const info=CASE_INFO[`${id}-${dir}`]||initCaseInfo(id,dir,c);
+  // fill modal
+  const badge=document.getElementById('ci-dir-badge');
+  badge.textContent=dir==='inbound'?'來程':'回程';
+  badge.className='ci-dir-badge '+(dir==='inbound'?'inbound':'outbound');
+  document.getElementById('ci-name').textContent=c.name;
+  const newBadge=document.getElementById('ci-new-badge');
+  newBadge.style.display=c.isNew?'inline':'none';
+  // Hide car/dur/dist rows for NEW unassigned cases; show for already-assigned cases
+  const hideExtra = c.isNew;
+  ['ci-row-car','ci-row-dur','ci-row-dist'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display=hideExtra?'none':'flex';
+  });
+  // Clear freq error on open
+  const freqErr=document.getElementById('ci-freq-err');
+  if(freqErr) freqErr.style.display='none';
+  // readonly note always shown in v2
+  document.getElementById('ci-readonly-note').style.display='block';
+  // freq circles
+  const circles=document.querySelectorAll('#ci-freq-circles .ci-dp');
+  const days=['一','二','三','四','五','六','日'];
+  circles.forEach((dp,i)=>{
+    dp.classList.toggle('s', info.freq.includes(days[i]));
+  });
+  updateCiFreqTxt();
+  // car
+  document.getElementById('ci-car').value=info.car||'';
+  // dur
+  document.getElementById('ci-dur').value=info.dur||'';
+  // dist
+  document.getElementById('ci-dist').value=info.dist||0;
+  // arrive
+  document.getElementById('ci-arrive').value=info.arrive||'07:30';
+  // accompany
+  ciSetAcc(info.accompany||false, true);
+  document.getElementById('ci-acc-num').value=info.accNum||1;
+  document.getElementById('mo-ci').classList.add('show');
+}
+function updateCiFreqTxt(){
+  const circles=document.querySelectorAll('#ci-freq-circles .ci-dp');
+  const days=['一','二','三','四','五','六','日'];
+  const sel=Array.from(circles).filter(d=>d.classList.contains('s')).map(d=>d.textContent);
+  document.getElementById('ci-freq-txt').textContent=sel.length?sel.join('、'):'未選擇';
+}
+function ciToggleDay(el){ el.classList.toggle('s'); updateCiFreqTxt(); }
+function ciSetAcc(val, silent){
+  document.getElementById('ci-acc-yes').classList.toggle('on',val);
+  document.getElementById('ci-acc-no').classList.toggle('on',!val);
+  document.getElementById('ci-acc-row').style.display=val?'flex':'none';
+}
+function ciChgNum(inputId, d){
+  const inp=document.getElementById(inputId);
+  let v=Math.min(99,Math.max(0,(parseInt(inp.value)||0)+d));
+  inp.value=v;
+}
+function saveCaseInfo(){
+  if(curCiId==null) return;
+  const key=`${curCiId}-${curCiDir}`;
+  const circles=document.querySelectorAll('#ci-freq-circles .ci-dp');
+  const days=['一','二','三','四','五','六','日'];
+  const sel=Array.from(circles).filter(d=>d.classList.contains('s')).map(d=>d.textContent);
+  // Validate freq required
+  const freqErr=document.getElementById('ci-freq-err');
+  if(!sel.length){
+    if(freqErr){ freqErr.style.display='block'; }
+    return;
+  }
+  if(freqErr) freqErr.style.display='none';
+  CASE_INFO[key]={
+    freq: sel,
+    car: document.getElementById('ci-car').value,
+    dur: document.getElementById('ci-dur').value,
+    dist: parseInt(document.getElementById('ci-dist').value)||0,
+    arrive: document.getElementById('ci-arrive').value,
+    accompany: document.getElementById('ci-acc-yes').classList.contains('on'),
+    accNum: parseInt(document.getElementById('ci-acc-num').value)||1,
+  };
+  // Update BASE entry so buildDay places the case correctly
+  {
+    const baseEntry = BASE.find(b=>b.id===curCiId && b.dir===curCiDir);
+    if(baseEntry && CASE_INFO[key].freq.length>0){
+      // Use selected car if available, else default to A/1 for NEW cases
+      baseEntry.car  = CASE_INFO[key].car || 'A';
+      baseEntry.trip = 1;
+    }
+  }
+  renderRightPanel();
+  renderPending();
+  closeAll();
+}
+
+// ── CONFLICT ──
+function renderUnassigned(){
+  document.getElementById('u-cnt').textContent=unpool.length;
+  const wrap=document.getElementById('u-chips');
+  if(!unpool.length){ wrap.innerHTML='<span style="font-size:11px;color:#007B6E">✓ 所有個案已分配完畢</span>'; document.getElementById('btn-auto').disabled=true; return; }
+  wrap.innerHTML=unpool.map(u=>`<span class="uchip${u.wc?' wc':''}">${u.wc?'♿ ':'🧑 '}${u.name}</span>`).join('');
+}
+function toggleC(){ conflOpen=!conflOpen; document.getElementById('cbody').style.display=conflOpen?'block':'none'; document.getElementById('chev').textContent=conflOpen?'▼':'▶'; }
+function setCC(n){
+  if(n<0)n=0; totalC=n;
+  document.getElementById('ccount').textContent=n+' 項';
+  document.getElementById('ccount-b').textContent=n;
+  if(n===0){
+    document.getElementById('ccount').style.background='#007B6E';
+    document.getElementById('chdr').style.background='#f0fdf4';
+    document.getElementById('chdr').style.borderBottomColor='#86efac';
+    document.getElementById('cicon').textContent='✅';
+    document.getElementById('ctitle').style.color='#166534';
+    document.getElementById('cstatus').style.color='#0F6E56';
+    document.getElementById('rp-conflict').className='rp-stat ok';
+    document.getElementById('rp-conflict').textContent='✓ 無異常';
+  }
+}
+function autoFix(){ unpool=[]; renderUnassigned(); setCC(totalC-3); }
+
+// ── DELETE ──
+function pDel(e,id){ e.stopPropagation(); pendDel=id; const c=getCase(curDay,id); document.getElementById('del-nm').textContent=c?c.name:'此個案'; document.getElementById('mo-del').classList.add('show'); }
+function doDel(){
+  if(pendDel==null) return;
+  const c=getCase(curDay,pendDel);
+  if(c){
+    unpool.push({id:'d'+pendDel, name:c.name, wc:c.wc});
+    removeCase(curDay, pendDel);
+    totalC+=1; setCC(totalC);
+    if(!conflOpen){ conflOpen=true; document.getElementById('cbody').style.display='block'; document.getElementById('chev').textContent='▼'; }
+    document.getElementById('chdr').style.background='#fef2f2';
+    document.getElementById('chdr').style.borderBottomColor='#fca5a5';
+    document.getElementById('cicon').textContent='⚠️';
+    document.getElementById('ctitle').style.color='#991b1b';
+    document.getElementById('cstatus').style.color='#dc2626';
+    document.getElementById('ccount').style.background='#dc2626';
+    document.getElementById('rp-conflict').className='rp-stat warn';
+    document.getElementById('rp-conflict') && (document.getElementById('rp-conflict').textContent=`⚠ ${totalC} 項異常`);
+    renderUnassigned();
+    document.getElementById('btn-auto').disabled=false;
+  }
+  pendDel=null; closeAll(); renderRightPanel();
+}
+
+// ── MODAL ──
+function openCL(){ document.getElementById('mo-cl').classList.add('show'); }
+function closeAll(){ document.querySelectorAll('.mo').forEach(m=>m.classList.remove('show')); }
+
+// ── PAGES ──
+function resetSmartPage(){
+  // Reset ORDER/CMAP so buildDay rebuilds fresh, keep CASE_INFO (user edits persist)
+  Object.keys(ORDER).forEach(k=>delete ORDER[k]);
+  Object.keys(CMAP).forEach(k=>delete CMAP[k]);
+  // Re-init unpool
+  unpool=[{id:'u1',name:'李建志',wc:false},{id:'u2',name:'陳秀梅',wc:true},{id:'u3',name:'黃大海',wc:false}];
+  totalC=3;
+  // Reset conflict panel
+  setCC(3);
+  document.getElementById('chdr').style.background='#fef2f2';
+  document.getElementById('chdr').style.borderBottomColor='#fca5a5';
+  document.getElementById('cicon').textContent='⚠️';
+  document.getElementById('ctitle').style.color='#991b1b';
+  document.getElementById('cstatus').style.color='#dc2626';
+  document.getElementById('ccount').style.background='#dc2626';
+  document.getElementById('rp-conflict').className='rp-stat warn';
+  document.getElementById('rp-conflict').textContent='⚠ 3 項異常';
+  document.getElementById('imp-btn') && (document.getElementById('imp-btn').disabled=true);
+  searchQ=''; const si=document.getElementById('case-search'); if(si) si.value=''; const sc=document.getElementById('search-clear'); if(sc) sc.className='search-clear';
+  renderRightPanel();
+  renderUnassigned();
+  renderPending();
+  updateTitle();
+}
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(id==='pg1'){ renderRightPanel(); renderUnassigned(); updateTitle(); }
+}
+function goSmart(){ showPage('pg1'); }
+function renderP0(){
+  const el=document.getElementById('p0-list');
+  buildDay(curDay);
+  const DL={inbound:'來程',outbound:'回程'};
+  let h='';
+  ['inbound','outbound'].forEach(dir=>{
+    let blk=`<div class="sec-bar">${DL[dir]}</div>`, has=false;
+    ['A','B','C'].forEach(car=>{[1,2,3].forEach(t=>{
+      const ids=getList(curDay,car,t,dir); if(!ids.length) return; has=true;
+      blk+=`<div class="trip-hdr"><span>${DR[car]} - 第${t}趟 ${TT[t]}預計發車</span><button class="info-btn">ℹ</button></div>`;
+      ids.forEach((id,i)=>{
+        const c=getCase(curDay,id); if(!c) return;
+        const pt=`0${6+t}:${String(i*9).padStart(2,'0')}`;
+        blk+=`<div class="p0-row"><span class="ct">${pt}</span><span class="cn">[${i+1}] ${c.name}${c.wc?' ♿':''}${c.locked?' 🔒':''}${c.isNew?' <span style="font-size:9px;padding:1px 5px;border-radius:6px;background:#dc2626;color:#fff;font-weight:600">NEW</span>':''}</span><span class="cf">${c.freq}</span><span class="ca" title="${c.addr}">${c.addr}</span><span class="cd">${c.dur}</span><span class="ck">${c.aid}</span><span class="cm">${c.note}</span></div>`;
+      });
+    });});
+    if(has) h+=blk;
+  });
+  el.innerHTML=h||'<div style="padding:24px;text-align:center;color:#aaa">尚無交通安排資料</div>';
+}
+
+document.querySelectorAll('.mo').forEach(m=>{ m.addEventListener('click',function(e){ if(e.target===this) closeAll(); }); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAll(); });
+renderP0();
+renderUnassigned();
+renderPending();
+</script>
+
+<!-- 個案資訊彈窗 -->
+<div class="mo" id="mo-ci">
+  <div class="ci-modal">
+    <div class="ci-head">
+      <span class="ci-dir-badge" id="ci-dir-badge">來程</span>
+      <span class="ci-name" id="ci-name">王美華</span>
+      <span class="ci-new" id="ci-new-badge" style="display:none">NEW</span>
+      <button onclick="closeAll()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:#888">✕</button>
+    </div>
+    <div class="readonly-note" id="ci-readonly-note">👁 唯讀版：此處調整僅供派車判斷，不會回寫到交通安排</div>
+    <div class="ci-body">
+      <div class="ci-row">
+        <div class="ci-lbl">接送頻率<small>每週哪幾天</small><span style="color:#dc2626;margin-left:3px">*</span></div>
+        <div class="ci-val">
+          <div class="ci-freq-txt" id="ci-freq-txt">一到五</div>
+          <div class="ci-dc" id="ci-freq-circles">
+            <div class="ci-dp s" onclick="ciToggleDay(this)">一</div>
+            <div class="ci-dp s" onclick="ciToggleDay(this)">二</div>
+            <div class="ci-dp s" onclick="ciToggleDay(this)">三</div>
+            <div class="ci-dp s" onclick="ciToggleDay(this)">四</div>
+            <div class="ci-dp s" onclick="ciToggleDay(this)">五</div>
+            <div class="ci-dp" onclick="ciToggleDay(this)">六</div>
+            <div class="ci-dp" onclick="ciToggleDay(this)">日</div>
+          </div>
+          <div id="ci-freq-err" style="display:none;font-size:11px;color:#dc2626;margin-top:5px">必填欄位</div>
+        </div>
+      </div>
+      <div class="ci-row" id="ci-row-car">
+        <div class="ci-lbl">車輛/路線<small>服務中車輛</small></div>
+        <div class="ci-val" style="position:relative">
+          <select class="ci-sel" id="ci-car">
+            <option value="">請選擇</option>
+            <option value="A">甲車 — 吳山（ABC-1234）第1趟 07:00</option>
+            <option value="B">乙車 — Lewis Hamilton（DEF-5678）第1趟 07:00</option>
+            <option value="C">丙車 — George Russell（GHI-9012）第1趟 07:00</option>
+          </select>
+        </div>
+      </div>
+      <div class="ci-row" id="ci-row-dur">
+        <div class="ci-lbl">乘車時長<small>分鐘</small></div>
+        <div class="ci-val"><input class="ci-input" id="ci-dur" type="number" min="0" placeholder="填寫乘車時長"></div>
+      </div>
+      <div class="ci-row" id="ci-row-dist">
+        <div class="ci-lbl">里程數<small>公里</small></div>
+        <div class="ci-val">
+          <div class="ci-num-row">
+            <button class="ci-nbtn" onclick="ciChgNum('ci-dist',-1)">−</button>
+            <input class="ci-ninput" id="ci-dist" type="number" value="0" min="0">
+            <button class="ci-nbtn" onclick="ciChgNum('ci-dist',1)">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="ci-row">
+        <div class="ci-lbl">預計抵達案家時間</div>
+        <div class="ci-val"><input class="ci-input" id="ci-arrive" type="time" value="07:30"></div>
+      </div>
+      <div class="ci-row">
+        <div class="ci-lbl">陪同家屬／外看</div>
+        <div class="ci-val">
+          <div class="ci-tbtn-grp">
+            <button class="ci-tbtn on" id="ci-acc-no" onclick="ciSetAcc(false)">無</button>
+            <button class="ci-tbtn" id="ci-acc-yes" onclick="ciSetAcc(true)">有</button>
+          </div>
+        </div>
+      </div>
+      <div id="ci-acc-row" class="ci-row" style="display:none">
+        <div class="ci-lbl">陪同人數</div>
+        <div class="ci-val">
+          <div class="ci-num-row">
+            <button class="ci-nbtn" onclick="ciChgNum('ci-acc-num',-1)">−</button>
+            <input class="ci-ninput" id="ci-acc-num" type="number" value="1" min="1" max="9">
+            <button class="ci-nbtn" onclick="ciChgNum('ci-acc-num',1)">+</button>
+            <span style="font-size:11px;color:#888">人</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ci-foot">
+      <button class="ci-btn-cancel" onclick="closeAll()">取消</button>
+      <button class="ci-btn-ok" onclick="saveCaseInfo()">確定</button>
+    </div>
+  </div>
+</div>
+
+<div class="overload-toast" id="overload-toast">⚠️ 該車輛已達人數上限</div>
+</body>
+</html>
